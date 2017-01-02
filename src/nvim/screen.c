@@ -1668,6 +1668,7 @@ static int advance_color_col(int vcol, int **color_cols)
 
 // Compute the width of the foldcolumn.  Based on 'foldcolumn' and how much
 // space is available for window "wp", minus "col".
+// which unit ? cell or chars ? wmw = minwidth
 static int compute_foldcolumn(win_T *wp, int col)
 {
   int fdc = wp->w_p_fdc;
@@ -2025,6 +2026,15 @@ static void copy_text_attr(int off, char_u *buf, int len, int attr)
     ScreenAttrs[off + i] = attr;
 }
 
+//
+enum {
+  FM_OpenStart,
+  FM_OpenWithin,
+  FM_What,
+  FM_Closed
+} EFoldMarker;
+
+
 /*
  * Fill the foldcolumn at "p" for window "wp".
  * Only to be called when 'foldcolumn' > 0.
@@ -2041,7 +2051,13 @@ fill_foldcolumn (
   int level;
   int first_level;
   int empty;
-  int fdc = compute_foldcolumn(wp, 0);
+  int fdc = compute_foldcolumn(wp, 0); /* in cells */
+  char_u *items[] = {
+    (char_u *)"-",
+    (char_u *)"❘", // first level = 1
+    (char_u *)">", //
+    (char_u *)"+" //
+  };
 
   // Init to all spaces.
   memset(p, ' ', (size_t)fdc);
@@ -2058,13 +2074,24 @@ fill_foldcolumn (
       first_level = 1;
     }
 
+
+    // TODO here we should concatenate
+    // i renamed to current_cell
+    // current_cell != level
     for (i = 0; i + empty < fdc; i++) {
       if (win_foldinfo.fi_lnum == lnum
           && first_level + i >= win_foldinfo.fi_low_level) {
         p[i] = '-';
       } else if (first_level == 1) {
-        p[i] = '|';
+        /* p[i] = '|'; */
+        /* strncat() */
+        STRNCAT(p, "❘", 10); // dest/src
+        // MB_BYTE2LEN
+        i += MB_CHARLEN( (char_u*)"❘") - 1;
+        ILOG("Car: %s", "❘");
+        // ｜ ❘
       } else if (first_level + i <= 9) {
+        // display numbers
         p[i] = '0' + first_level + i;
       } else {
         p[i] = '>';
@@ -2074,6 +2101,7 @@ fill_foldcolumn (
       }
     }
   }
+
   if (closed) {
     p[i >= fdc ? i - 1 : i] = '+';
   }
