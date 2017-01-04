@@ -2039,7 +2039,7 @@ enum {
  * Fill the foldcolumn at "p" for window "wp".
  * Only to be called when 'foldcolumn' > 0.
  */
-static void
+static int
 fill_foldcolumn (
     char_u *p,
     win_T *wp,
@@ -2052,15 +2052,17 @@ fill_foldcolumn (
   int first_level;
   int empty;
   int fdc = compute_foldcolumn(wp, 0); /* in cells */
-  char_u *items[] = {
-    (char_u *)"-",
-    (char_u *)"❘", // first level = 1
-    (char_u *)">", //
-    (char_u *)"+" //
-  };
+  /* char_u *items[] = { */
+  /*   (char_u *)"-", */
+  /*   (char_u *)"❘", // first level = 1 */
+  /*   (char_u *)">", // */
+  /*   (char_u *)"+" // */
+  /* }; */ 
+  /* ＋ */
 
   // Init to all spaces.
-  memset(p, ' ', (size_t)fdc);
+  // TODO be careful pass sizeof(extra) ? = 18
+  memset(p, 'a', 18);
 
   level = win_foldinfo.fi_level;
   if (level > 0) {
@@ -2079,16 +2081,24 @@ fill_foldcolumn (
     // i renamed to current_cell
     // current_cell != level
     for (i = 0; i + empty < fdc; i++) {
+      // if line where the fold starts
+      // and lowest fold level that starts on that line
       if (win_foldinfo.fi_lnum == lnum
           && first_level + i >= win_foldinfo.fi_low_level) {
         p[i] = '-';
       } else if (first_level == 1) {
+        u_char m[] = "｜"; // ❘"❘";
         /* p[i] = '|'; */
-        /* strncat() */
-        STRNCAT(p, "❘", 10); // dest/src
+        /* strncat() |*/
+        ILOG("p before: %s (i=%d) strlen(m)=%d", p, i, STRLEN(m));
+        /* STRNCAT(p, "❘", 10); // dest/src */
+        /* p[i] = m; */
+        STRNCPY(&p[i], m, STRLEN(m)); // dest/src including terminal byte
         // MB_BYTE2LEN
-        i += MB_CHARLEN( (char_u*)"❘") - 1;
-        ILOG("Car: %s", "❘");
+        /* i += mb_string2cells(m) - 1; */
+        /* ILOG("Car: %s", "❘"); */
+        ILOG("CHARLEN=%d", mb_string2cells(m)); // MB_CHARLEN(m));
+        ILOG("p after: %s (i=%d)", p, i);
         // ｜ ❘
       } else if (first_level + i <= 9) {
         // display numbers
@@ -2105,6 +2115,8 @@ fill_foldcolumn (
   if (closed) {
     p[i >= fdc ? i - 1 : i] = '+';
   }
+
+  return fdc;
 }
 
 /*
@@ -2709,9 +2721,11 @@ win_line (
 
         draw_state = WL_FOLD;
         if (fdc > 0) {
-          // Draw the 'foldcolumn'.
-          fill_foldcolumn(extra, wp, false, lnum);
-          n_extra = fdc;
+          /* ILOG("fdc=%d", fdc); */
+          // Draw the 'foldcolumn' not closed
+          n_extra = fill_foldcolumn(extra, wp, false, lnum);
+          /** TODO recuperer le n_extra comme retour de */
+          /* n_extra = fdc; */
           p_extra = extra;
           p_extra[n_extra] = NUL;
           c_extra = NUL;
