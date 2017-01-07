@@ -2035,11 +2035,11 @@ enum {
 } EFoldMarker;
 
 
-/*
- * Fill the foldcolumn at "p" for window "wp".
- * Only to be called when 'foldcolumn' > 0.
- */
-static int
+///
+/// Fill the foldcolumn at "p" for window "wp".
+/// Only to be called when 'foldcolumn' > 0.
+///
+static void
 fill_foldcolumn (
     char_u *p,
     win_T *wp,
@@ -2050,15 +2050,15 @@ fill_foldcolumn (
   int i = 0;
   int level;
   int first_level;
-  int empty;
-  int fdc = compute_foldcolumn(wp, 0); /* in cells */
-  /* char_u *items[] = { */
-  /*   (char_u *)"-", */
-  /*   (char_u *)"❘", // first level = 1 */
-  /*   (char_u *)">", // */
-  /*   (char_u *)"+" // */
-  /* }; */ 
-  /* ＋ */
+  int empty; // TODO convert to bool ?
+  int fdc = compute_foldcolumn(wp, 0); /* allowed width in cells */
+  // TODO(teto): use fillchar instead ?
+  static char_u *items[] = {
+    (char_u *)"-",
+    (char_u *)"❘", // first level = 1
+    (char_u *)">", //
+    (char_u *)"+" // /* ＋ */
+  };
 
   // Init to all spaces.
   // TODO be careful pass sizeof(extra) ? = 18
