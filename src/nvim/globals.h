@@ -1032,6 +1032,13 @@ EXTERN int fill_stlnc INIT(= ' ');
 EXTERN int fill_vert INIT(= ' ');
 EXTERN int fill_fold INIT(= '-');
 EXTERN int fill_diff INIT(= '-');
+// MATT
+EXTERN char_u *fold_chars[] INIT(= {
+  (char_u *)"-",
+  (char_u *)"|", // ❘ │
+  (char_u *)">", //
+  (char_u *)"+" // /* ＋ */
+});
 
 /* Whether 'keymodel' contains "stopsel" and "startsel". */
 EXTERN int km_stopsel INIT(= FALSE);

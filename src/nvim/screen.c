@@ -82,6 +82,7 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <string.h>
+/* #include <math.h> */
 
 #include "nvim/vim.h"
 #include "nvim/ascii.h"
@@ -140,6 +141,7 @@ static int screen_attr = 0;
 
 static match_T search_hl;       /* used for 'hlsearch' highlight matching */
 
+// TODO I should be able to remove that one !
 static foldinfo_T win_foldinfo; /* info for 'foldcolumn' */
 
 /*
@@ -1386,7 +1388,9 @@ static void win_update(win_T *wp)
        * 'wrap' is on).
        */
       fold_count = foldedCount(wp, lnum, &win_foldinfo);
+ 
       if (fold_count != 0) {
+        // TODO find the matching fold
         fold_line(wp, fold_count, &win_foldinfo, lnum, row);
         ++row;
         --fold_count;
@@ -1684,7 +1688,8 @@ static int compute_foldcolumn(win_T *wp, int col)
 /*
  * Display one folded line.
  */
-static void fold_line(win_T *wp, long fold_count, foldinfo_T *foldinfo, linenr_T lnum, int row)
+static void fold_line(win_T *wp, long fold_count,
+    foldinfo_T *foldinfo, linenr_T lnum, int row)
 {
   char_u buf[51];
   pos_T       *top, *bot;
@@ -2026,7 +2031,7 @@ static void copy_text_attr(int off, char_u *buf, int len, int attr)
     ScreenAttrs[off + i] = attr;
 }
 
-//
+// enum to identify character
 enum {
   FM_OpenStart,
   FM_OpenWithin,
@@ -2034,16 +2039,38 @@ enum {
   FM_Closed
 } EFoldMarker;
 
+// TODO(teto): use fillchar instead ?
+/* static char_u *items[] = { */
+/*   (char_u *)"-", */
+/*   (char_u *)"❘", // first level = 1 */
+/*   (char_u *)">", // */
+/*   (char_u *)"+" // /1* ＋ *1/ */
+/* }; */
+
+int get_closedfoldcolumnwidth(void) {
+  return mb_string2cells(fold_chars[FM_Closed]);
+}
+
+int get_openfoldcolumnwidth(void) {
+  return MAX(mb_string2cells(fold_chars[FM_OpenStart]), mb_string2cells(fold_chars[FM_OpenWithin]));
+}
+
 
 ///
 /// Fill the foldcolumn at "p" for window "wp".
 /// Only to be called when 'foldcolumn' > 0.
-///
-static void
+/// @param p To fill with characters
+/// @param closed 
+/// TODO ideally we should know max number of opened/closed on a line to 
+/// dynamically adapt the size of the foldcolumn
+/// hasFoldingWin  should be improved to count the number of subsequent
+// nested and closed folds and fill foldinfo_T with that information
+// TODO should be able to pass a fold_T ?
+static int
 fill_foldcolumn (
     char_u *p,
     win_T *wp,
-    int closed,                     /* TRUE of FALSE */
+    int closed,                     /* TRUE=>fold_line or FALSE=>win_line */
     linenr_T lnum                  /* current line number */
 )
 {
@@ -2051,61 +2078,111 @@ fill_foldcolumn (
   int level;
   int first_level;
   int empty; // TODO convert to bool ?
+  /* int maxcolwidth = 1; */
+  fold_T *fp = NULL; // Top level/parent fold
   int fdc = compute_foldcolumn(wp, 0); /* allowed width in cells */
-  // TODO(teto): use fillchar instead ?
-  static char_u *items[] = {
-    (char_u *)"-",
-    (char_u *)"❘", // first level = 1
-    (char_u *)">", //
-    (char_u *)"+" // /* ＋ */
-  };
+  // HACK to get the max width of a column
+  /* for(i = 0; i < FM_Closed + 1; ++i){ */
+  /*   /1* if (mb_string2cells(items[i]) > maxcolwidth) *1/ */
+  /*     maxcolwidth = MAX(maxcolwidth,mb_string2cells(items[i])); */
+  /* } */
 
+  /* int width = 0; */
+  /* maxcolwidth = MAX(get_closedfoldcolumnwidth(), get_openfoldcolumnwidth()); */
   // Init to all spaces.
   // TODO be careful pass sizeof(extra) ? = 18
   memset(p, 'a', 18);
-
+  //!
+  // here fp contains the valid top level fold
   level = win_foldinfo.fi_level;
+  // from here on
+
+  // if there are folds
   if (level > 0) {
+    if (!foldFind(&wp->w_folds , lnum, &fp)) {
+      ELOG("Not possible !");
+    }
+    
+
+    // Take into account closed/open states !
+    // Not necessarely Widest, just what is needed
+    int needed_cell_nb = getWidestNestingRecurse(1, &fp->fd_nested);
     // If there is only one column put more info in it.
     empty = (fdc == 1) ? 0 : 1;
 
+    // A priori we have the following number of cell available
+    // TODO compute first_level based sur le plus contraignant des 
+    /* available_cells = win_foldinfo.fi_widest_cell_width; */
     // If the column is too narrow, we start at the lowest level that
     // fits and use numbers to indicated the depth.
-    first_level = level - fdc - closed + 1 + empty;
+    // - closed
+    // - closed + 1
+    first_level = level - fdc  - closed + 1 + empty;
     if (first_level < 1) {
       first_level = 1;
+    }
+
+    // TODO first level depends on size of closed an open columns 
+    // TODO use getWidestNestingRecurse
+
+    /* width += level * get_openfoldcolumnwidth() ; */
+    /* width += (level - win_foldinfo.fi_low_level) * get_closedfoldcolumnwidth(); */
+
+    if(lnum >= 2080 && lnum <= 2082) {
+      /* ILOG("maxcolwidth=%d", maxcolwidth); */
+      ILOG("%d: level=%d, lowest=%d first_level=%d", lnum, level, win_foldinfo.fi_low_level, first_level);
+      ILOG("fi_widest_cell_width=%d", available_cells);
+      ILOG("closedwidth=%d openwidth=%d", get_openfoldcolumnwidth(), get_closedfoldcolumnwidth());
     }
 
 
     // TODO here we should concatenate
     // i renamed to current_cell
     // current_cell != level
+    // iterate on levels
     for (i = 0; i + empty < fdc; i++) {
+
+      u_char *m; // = "Z";
       // if line where the fold starts
       // and lowest fold level that starts on that line
       if (win_foldinfo.fi_lnum == lnum
           && first_level + i >= win_foldinfo.fi_low_level) {
-        p[i] = '-';
+        /* p[i] = */ 
+          m = fold_chars[FM_OpenStart];
+        // FM_OpenStart
       } else if (first_level == 1) {
-        u_char m[] = "｜"; // ❘"❘";
+        /* u_char m[] = "｜"; // ❘"❘"; */
+        /* u_char m[] = "|"; // ❘"❘"; */
+        m = fold_chars[FM_OpenWithin]; // ❘"❘";
+        // ｜ ❘
+      } else if (first_level + i <= 9) {
+        // display numbers
+        /* p[i] = '0' + first_level + i; */
+
+        /* m = fold_chars[FM_What]; // temporary solution */
+        int len = STRLEN(p);
+        p[len] = '0' + first_level + i;
+        p[len + 1] = '\0';
+        continue;
+      } else {
+        m = fold_chars[FM_What];
+      }
         /* p[i] = '|'; */
         /* strncat() |*/
-        ILOG("p before: %s (i=%d) strlen(m)=%d", p, i, STRLEN(m));
+        /* ILOG("p before: %s (i=%d) strlen(m)=%d", p, i, STRLEN(m)); */
         /* STRNCAT(p, "❘", 10); // dest/src */
         /* p[i] = m; */
+        /* strncat */
         STRNCPY(&p[i], m, STRLEN(m)); // dest/src including terminal byte
         // MB_BYTE2LEN
         /* i += mb_string2cells(m) - 1; */
         /* ILOG("Car: %s", "❘"); */
-        ILOG("CHARLEN=%d", mb_string2cells(m)); // MB_CHARLEN(m));
-        ILOG("p after: %s (i=%d)", p, i);
-        // ｜ ❘
-      } else if (first_level + i <= 9) {
-        // display numbers
-        p[i] = '0' + first_level + i;
-      } else {
-        p[i] = '>';
-      }
+        /* ILOG("CHARLEN=%d", mb_string2cells(m)); // MB_CHARLEN(m)); */
+        /* ILOG("p after: %s (i=%d)", p, i); */
+
+      /* STRNCPY(&p[i], m, STRLEN(m)); // dest/src including terminal byte */
+        STRNCAT(p,m, 4);
+
       if (first_level + i == level) {
         break;
       }
@@ -2113,9 +2190,12 @@ fill_foldcolumn (
   }
 
   if (closed) {
+    //! just last item
+    // TODO not good !!
     p[i >= fdc ? i - 1 : i] = '+';
   }
 
+  // TODO not good 
   return fdc;
 }
 

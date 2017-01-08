@@ -40,6 +40,10 @@ extern StlClickDefinition *tab_page_click_defs;
 /// Size of the tab_page_click_defs array
 extern long tab_page_click_defs_size;
 
+// TODO move to generated ones
+/* extern int get_closedfoldcolumnwidth(void); */
+/* int get_openfoldcolumnwidth(void); */
+
 #ifdef INCLUDE_GENERATED_DECLARATIONS
 # include "screen.h.generated.h"
 #endif
