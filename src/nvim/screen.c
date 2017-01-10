@@ -1728,18 +1728,21 @@ static void fold_line(win_T *wp, long fold_count,
   // Reduce the width when there is not enough space.
   fdc = compute_foldcolumn(wp, col);
   if (fdc > 0) {
-    fill_foldcolumn(buf, wp, TRUE, lnum);
-    if (wp->w_p_rl) {
-      int i;
+    // TODO take into account n_extra ?
+    int n_extra = fill_foldcolumn(buf, wp, TRUE, lnum);
+    ILOG("n_extra=%d buf=%s", n_extra, buf);
+    /* if (wp->w_p_rl) { */
+    /*   int i; */
 
-      copy_text_attr(off + wp->w_width - fdc - col, buf, fdc,
-          hl_attr(HLF_FC));
-      /* reverse the fold column */
-      for (i = 0; i < fdc; ++i)
-        ScreenLines[off + wp->w_width - i - 1 - col] = buf[i];
-    } else
-      copy_text_attr(off + col, buf, fdc, hl_attr(HLF_FC));
-    col += fdc;
+    /*   copy_text_attr(off + wp->w_width - n_extra - col, buf, n_extra, */
+    /*       hl_attr(HLF_FC)); */
+    /*   /1* reverse the fold column *1/ */
+    /*   for (i = 0; i < n_extra; ++i) */
+    /*     ScreenLines[off + wp->w_width - i - 1 - col] = buf[i]; */
+    /* } else */
+      /* TODO use screen_puts_len(); */
+      copy_text_attr(off + col, buf, n_extra, hl_attr(HLF_FC));
+    col += n_extra;
   }
 
 # define RL_MEMSET(p, v, l)  if (wp->w_p_rl) \
@@ -2047,13 +2050,15 @@ enum {
 /*   (char_u *)"+" // /1* ＋ *1/ */
 /* }; */
 
-int get_closedfoldcolumnwidth(void) {
-  return mb_string2cells(fold_chars[FM_Closed]);
+int get_foldcolumnwidth(bool closed) {
+  if (closed)
+    return mb_string2cells(fold_chars[FM_Closed]);
+  else 
+      return MAX(mb_string2cells(fold_chars[FM_OpenStart]), mb_string2cells(fold_chars[FM_OpenWithin]));
 }
 
-int get_openfoldcolumnwidth(void) {
-  return MAX(mb_string2cells(fold_chars[FM_OpenStart]), mb_string2cells(fold_chars[FM_OpenWithin]));
-}
+/* int get_foldcolumnwidth(void) { */
+/* } */
 
 
 ///
@@ -2077,10 +2082,16 @@ fill_foldcolumn (
   int i = 0;
   int level;
   int first_level;
+  int needed_cells = 0;
+  int cell_counter = 0;
   int empty; // TODO convert to bool ?
   /* int maxcolwidth = 1; */
-  fold_T *fp = NULL; // Top level/parent fold
+  fold_T **fp = NULL; // Top level/parent fold
   int fdc = compute_foldcolumn(wp, 0); /* allowed width in cells */
+  int available_cells = fdc;
+
+  int char_counter = 0;
+  garray_T results = GA_EMPTY_INIT_VALUE; /* init structures number */
   // HACK to get the max width of a column
   /* for(i = 0; i < FM_Closed + 1; ++i){ */
   /*   /1* if (mb_string2cells(items[i]) > maxcolwidth) *1/ */
@@ -2094,21 +2105,21 @@ fill_foldcolumn (
   memset(p, 'a', 18);
   //!
   // here fp contains the valid top level fold
+  // don't need that
   level = win_foldinfo.fi_level;
   // from here on
 
   // if there are folds
   if (level > 0) {
-    if (!foldFind(&wp->w_folds , lnum, &fp)) {
-      ELOG("Not possible !");
-    }
-    
+    /* if (!foldFind(&wp->w_folds , lnum, &fp)) { */
+    /*   ELOG("Not possible !"); */
+    /* } */
 
     // Take into account closed/open states !
     // Not necessarely Widest, just what is needed
-    int needed_cell_nb = getWidestNestingRecurse(1, &fp->fd_nested);
+    /* int needed_cell_nb = getWidestNestingRecurse(1, &fp->fd_nested); */
     // If there is only one column put more info in it.
-    empty = (fdc == 1) ? 0 : 1;
+    /* empty = (fdc == 1) ? 0 : 1; */
 
     // A priori we have the following number of cell available
     // TODO compute first_level based sur le plus contraignant des 
@@ -2117,86 +2128,135 @@ fill_foldcolumn (
     // fits and use numbers to indicated the depth.
     // - closed
     // - closed + 1
-    first_level = level - fdc  - closed + 1 + empty;
-    if (first_level < 1) {
-      first_level = 1;
-    }
+    /* first_level = level - fdc  - closed + 1 + empty; */
+    /* if (first_level < 1) { */
+    /*   first_level = 1; */
+    /* } */
 
     // TODO first level depends on size of closed an open columns 
     // TODO use getWidestNestingRecurse
 
     /* width += level * get_openfoldcolumnwidth() ; */
     /* width += (level - win_foldinfo.fi_low_level) * get_closedfoldcolumnwidth(); */
+    getFolds(&wp->w_folds, lnum, &results);
 
-    if(lnum >= 2080 && lnum <= 2082) {
-      /* ILOG("maxcolwidth=%d", maxcolwidth); */
-      ILOG("%d: level=%d, lowest=%d first_level=%d", lnum, level, win_foldinfo.fi_low_level, first_level);
-      ILOG("fi_widest_cell_width=%d", available_cells);
-      ILOG("closedwidth=%d openwidth=%d", get_openfoldcolumnwidth(), get_closedfoldcolumnwidth());
+    fp = (fold_T **)results.ga_data;
+    /* assert(results.ga_data == level); */
+    /* TODO here we shall compute first level */
+    for (int i = 0; i < results.ga_len; ++i) {
+      /* results */
+      ILOG("line %d: level=%d #folds=%d ===", lnum, level,  results.ga_len);
+      /* ILOG("fold top=%d len=%d", fp[i]->fd_top, fp[i]->fd_len); */
+
+      needed_cells += get_foldcolumnwidth(fp[i]->fd_flags == FD_CLOSED);
+      /* if (fp[i]->fd_flags == FD_CLOSED) */
+      /*   needed_cells += get_openfoldcolumnwidth(); */
+      /* else */
+      /*   needed_cells += get_closedfoldcolumnwidth(); */
     }
+    ILOG("Needs %d cells", needed_cells);
 
+    /* if(lnum >= 2080 && lnum <= 2082) { */
+    /*   /1* ILOG("maxcolwidth=%d", maxcolwidth); *1/ */
+    /*   ILOG("%d: level=%d, lowest=%d first_level=%d", lnum, level, win_foldinfo.fi_low_level, first_level); */
+    /*   /1* ILOG("fi_widest_cell_width=%d", available_cells); *1/ */
+    /*   ILOG("closedwidth=%d openwidth=%d", get_openfoldcolumnwidth(), get_closedfoldcolumnwidth()); */
+    /* } */
+
+    int fold_starting_line = 0;
 
     // TODO here we should concatenate
     // i renamed to current_cell
     // current_cell != level
     // iterate on levels
-    for (i = 0; i + empty < fdc; i++) {
+    for (i = 0; i < level; i++) {
+      // TODO get matching fold width
 
       u_char *m; // = "Z";
+      bool closed = fp[i]->fd_flags == FD_CLOSED;
+      int current_level_required_cells = get_foldcolumnwidth(fp[i]->fd_flags == FD_CLOSED);
+      /* if ( */
+      fold_starting_line += fp[i]->fd_top;
+
       // if line where the fold starts
       // and lowest fold level that starts on that line
-      if (win_foldinfo.fi_lnum == lnum
-          && first_level + i >= win_foldinfo.fi_low_level) {
-        /* p[i] = */ 
+      /* if (win_foldinfo.fi_lnum == lnum */
+      /*     && first_level + i >= win_foldinfo.fi_low_level) { */
+      /*     m = fold_chars[FM_OpenStart]; */
+      /* } else if (first_level == 1) { */
+      /*   m = fold_chars[FM_OpenWithin]; */
+      /* if (!closed) { */
+      /*     m = fold_chars[FM_OpenWithin]; */
+      /*   // fd_top is relative to parent */
+      /*   /1* if(fold_starting_line == lnum){ *1/ */
+      /*   /1*   m = fold_chars[FM_OpenStart]; *1/ */
+      /*   /1* } *1/ */
+      /* } else */ 
+      if (closed) {
+        m = fold_chars[FM_Closed];
+      } else if(fold_starting_line == lnum){
           m = fold_chars[FM_OpenStart];
-        // FM_OpenStart
-      } else if (first_level == 1) {
-        /* u_char m[] = "｜"; // ❘"❘"; */
-        /* u_char m[] = "|"; // ❘"❘"; */
-        m = fold_chars[FM_OpenWithin]; // ❘"❘";
-        // ｜ ❘
-      } else if (first_level + i <= 9) {
-        // display numbers
-        /* p[i] = '0' + first_level + i; */
+      }
+      /* else if (first_level + i <= 9) { */
+      /*   // display numbers */
+      /*   /1* p[i] = '0' + first_level + i; *1/ */
 
-        /* m = fold_chars[FM_What]; // temporary solution */
-        int len = STRLEN(p);
-        p[len] = '0' + first_level + i;
-        p[len + 1] = '\0';
-        continue;
-      } else {
-        m = fold_chars[FM_What];
+      /*   /1* m = fold_chars[FM_What]; // temporary solution *1/ */
+      /*   int len = STRLEN(p); */
+      /*   p[len] = '0' + first_level + i; */
+      /*   p[len + 1] = '\0'; */
+      /*   continue; */
+      /* } */
+      else { 
+        m = fold_chars[FM_OpenWithin]; 
+        /* m = fold_chars[FM_What]; */
       }
         /* p[i] = '|'; */
         /* strncat() |*/
-        /* ILOG("p before: %s (i=%d) strlen(m)=%d", p, i, STRLEN(m)); */
         /* STRNCAT(p, "❘", 10); // dest/src */
         /* p[i] = m; */
         /* strncat */
-        STRNCPY(&p[i], m, STRLEN(m)); // dest/src including terminal byte
+        /* STRNCPY(&p[i], m, STRLEN(m)); // dest/src including terminal byte */
         // MB_BYTE2LEN
         /* i += mb_string2cells(m) - 1; */
         /* ILOG("Car: %s", "❘"); */
         /* ILOG("CHARLEN=%d", mb_string2cells(m)); // MB_CHARLEN(m)); */
-        /* ILOG("p after: %s (i=%d)", p, i); */
 
       /* STRNCPY(&p[i], m, STRLEN(m)); // dest/src including terminal byte */
-        STRNCAT(p,m, 4);
 
-      if (first_level + i == level) {
-        break;
-      }
+        ILOG("p before: %s (i=%d closed=%d) adding [%s] strlen(m)=%d", p, i, closed, m, STRLEN(m));
+        /* STRNCAT(p,m, 4); */
+        int char2cells = mb_string2cells(m);
+        STRNCPY(&p[char_counter], m, STRLEN(m)); // dest/src including terminal byte
+        char_counter += STRLEN(m);
+        if(current_level_required_cells > char2cells) {
+          /* memset( */
+          /*     STRNCPY( , " ", ); */
+        }
+        cell_counter += char2cells;
+        ILOG("p after: %s (i=%d)", p, i);
+        if(closed) {
+          break;
+        }
+
+      /* if (first_level + i == level) { */
+      /*   break; */
+      /* } */
     }
-  }
+    ILOG("char counter=%d cell_counter=%d", char_counter, cell_counter);
+    ILOG("final p%s", p);
 
-  if (closed) {
-    //! just last item
-    // TODO not good !!
-    p[i >= fdc ? i - 1 : i] = '+';
-  }
+  } /* end of if(level) */
+
+  /* if (closed) { */
+  /*   //! just last item */
+  /*   // TODO not good !! */
+  /*   p[i >= fdc ? i - 1 : i] = '+'; */
+  /* } */
 
   // TODO not good 
-  return fdc;
+  // return STRLEN()
+  return MAX(char_counter + (fdc-cell_counter), fdc);
 }
 
 /*
@@ -2806,6 +2866,8 @@ win_line (
           n_extra = fill_foldcolumn(extra, wp, false, lnum);
           /** TODO recuperer le n_extra comme retour de */
           /* n_extra = fdc; */
+
+          /* ILOG("n_extra=%d", n_extra); */
           p_extra = extra;
           p_extra[n_extra] = NUL;
           c_extra = NUL;

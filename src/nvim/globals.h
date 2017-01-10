@@ -1034,10 +1034,11 @@ EXTERN int fill_fold INIT(= '-');
 EXTERN int fill_diff INIT(= '-');
 // MATT
 EXTERN char_u *fold_chars[] INIT(= {
-  (char_u *)"-",
-  (char_u *)"|", // ❘ │
-  (char_u *)">", //
-  (char_u *)"+" // /* ＋ */
+  (char_u *)"▾", /* - */
+  /* (char_u *)"|", // ❘ │ */
+  (char_u *)"│", // 1 characeter 3 bytes for U2052 ❘ │
+  (char_u *)">", // FM_What
+  (char_u *)"▸", // /* ＋  or ▾  ▸ */
 });
 
 /* Whether 'keymodel' contains "stopsel" and "startsel". */

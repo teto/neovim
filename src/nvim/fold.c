@@ -104,6 +104,59 @@ bool hasFolding(linenr_T lnum, linenr_T *firstp, linenr_T *lastp)
   return hasFoldingWin(curwin, lnum, firstp, lastp, TRUE, NULL);
 }
 
+
+/// Need to get folds 
+/// copy of hasFoldingWin
+bool getFolds(
+    /* win_T *win, */
+    garray_T *gap,
+    linenr_T lnum,
+    garray_T *out
+)
+{
+  fold_T      *fp;
+
+  int level=0;
+  linenr_T lnum_rel = lnum;
+    /*
+     * Recursively search for a fold that contains "lnum".
+     */
+    /* gap = &win->w_folds; */
+    for (;; ) {
+      if (!foldFind(gap, lnum_rel, &fp))
+        return false;
+      assert(fp != 0);
+      /* out */
+      GA_APPEND(fold_T *, out, fp);
+      // MATT
+      /* if (level == 0) { */
+      /*   widest_chars = getWidestNestingRecurse(0, fp); */
+      /* } */
+      /* Remember lowest level of fold that starts in "lnum". */
+      /* if (lnum_rel == fp->fd_top && low_level == 0) */
+      /*   low_level = level + 1; */
+
+      /* first += fp->fd_top; */
+      /* last += fp->fd_top; */
+
+      /* is this fold closed? */
+      /* had_folded = check_closed(win, fp, &use_level, level, */
+      /*     &maybe_small, lnum - lnum_rel); */
+      /* if (had_folded) { */
+      /*   /1* Fold closed: Set last and quit loop. *1/ */
+      /*   last += fp->fd_len - 1; */
+      /*   break; */
+      /* } */
+
+      /* Fold found, but it's open: Check nested folds.  Line number is
+       * relative to containing fold. */
+      gap = &fp->fd_nested;
+      lnum_rel -= fp->fd_top;
+      ++level;
+    }
+    return true;
+}
+
 /* hasFoldingWin() {{{2 */
 /// @param[out] firstp first line covered by the fold
 /// @param[out] lastp last line covered by the fold
@@ -1442,10 +1495,7 @@ int getWidestNestingRecurse(int accumulated_cellwidth, garray_T *gap)
 
   fp = (fold_T *)gap->ga_data;
   for (int i = 0; i < gap->ga_len; ++i) {
-    if (fp[i].fd_flags == FD_OPEN)
-      accumulated_cellwidth += get_openfoldcolumnwidth();
-    else
-      accumulated_cellwidth += get_closedfoldcolumnwidth();
+      accumulated_cellwidth += get_foldcolumnwidth(&fp[i].fd_flags == FD_CLOSED);
 
     result = getWidestNestingRecurse(accumulated_cellwidth, &fp[i].fd_nested);
     if (result > maxwidth)
