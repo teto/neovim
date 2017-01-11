@@ -1728,9 +1728,24 @@ static void fold_line(win_T *wp, long fold_count,
   // Reduce the width when there is not enough space.
   fdc = compute_foldcolumn(wp, col);
   if (fdc > 0) {
+  /* current_ScreenLine = new_ScreenLines + Rows * Columns; */
     // TODO take into account n_extra ?
     int n_extra = fill_foldcolumn(buf, wp, TRUE, lnum);
     ILOG("n_extra=%d buf=%s", n_extra, buf);
+    ILOG("row=%d col=%d", row, col);
+    // offset 
+/* screen_Rows */
+    ILOG("screen_rows=%d off=%d vs mine=%d ", screen_Rows, off, 
+        /* LineOffset[screen_Rows-1], */
+        /* LineOffset[screen_Rows], */
+        screen_Rows*screen_Columns
+        );
+
+    /// YES !! 
+        /* screen_Rows*screen_Columns  == off ! */
+
+  /* off = LineOffset[row] + col; */
+    /* off = LineOffset[row] + col; */
     /* if (wp->w_p_rl) { */
     /*   int i; */
 
@@ -1741,8 +1756,23 @@ static void fold_line(win_T *wp, long fold_count,
     /*     ScreenLines[off + wp->w_width - i - 1 - col] = buf[i]; */
     /* } else */
       /* TODO use screen_puts_len(); */
-      copy_text_attr(off + col, buf, n_extra, hl_attr(HLF_FC));
-    col += n_extra;
+      ILOG("before ScreenLines=%s", ScreenLines + off);
+      /* copy_text_attr(off + col, "XXX", 3, hl_attr(HLF_FC)); */
+
+      // en fait faudrait que ca ecrive dans current_ScreenLine qui est
+      // ptet la derniere 
+      // screen_Rows
+
+      // taken from screen_puts_len
+    /* off_from = (unsigned)(current_ScreenLine - ScreenLines); */
+    /* off_to = LineOffset[screen_Rows]; */
+
+      /* screen_puts_len( (char_u*)"XXX", 3, screen_Rows, col, hl_attr(HLF_FC)); */
+      /* screen_puts_len("▸--", 3, screen_Rows, col, hl_attr(HLF_FC)); */
+      screen_puts_len(buf, n_extra, screen_Rows, col, hl_attr(HLF_FC));
+      ILOG("after ScreenLines=%s", ScreenLines + off);
+      /* copy_text_attr(off + col, buf, n_extra, hl_attr(HLF_FC)); */
+    col += fdc;
   }
 
 # define RL_MEMSET(p, v, l)  if (wp->w_p_rl) \
@@ -2020,9 +2050,10 @@ static void fold_line(win_T *wp, long fold_count,
   }
 }
 
-/*
- * Copy "buf[len]" to ScreenLines["off"] and set attributes to "attr".
- */
+///
+/// Copy "buf[len]" to ScreenLines["off"] and set attributes to "attr".
+///
+/// @warn Accepts only monybyte characters
 static void copy_text_attr(int off, char_u *buf, int len, int attr)
 {
   int i;
@@ -2042,24 +2073,12 @@ enum {
   FM_Closed
 } EFoldMarker;
 
-// TODO(teto): use fillchar instead ?
-/* static char_u *items[] = { */
-/*   (char_u *)"-", */
-/*   (char_u *)"❘", // first level = 1 */
-/*   (char_u *)">", // */
-/*   (char_u *)"+" // /1* ＋ *1/ */
-/* }; */
-
 int get_foldcolumnwidth(bool closed) {
   if (closed)
     return mb_string2cells(fold_chars[FM_Closed]);
   else 
       return MAX(mb_string2cells(fold_chars[FM_OpenStart]), mb_string2cells(fold_chars[FM_OpenWithin]));
 }
-
-/* int get_foldcolumnwidth(void) { */
-/* } */
-
 
 ///
 /// Fill the foldcolumn at "p" for window "wp".
@@ -2102,7 +2121,7 @@ fill_foldcolumn (
   /* maxcolwidth = MAX(get_closedfoldcolumnwidth(), get_openfoldcolumnwidth()); */
   // Init to all spaces.
   // TODO be careful pass sizeof(extra) ? = 18
-  memset(p, 'a', 18);
+  memset(p, ' ', 18);
   //!
   // here fp contains the valid top level fold
   // don't need that
@@ -5443,21 +5462,30 @@ static int screen_comp_differs(int off, int *u8cc)
   return FALSE;
 }
 
-/*
- * Put string '*text' on the screen at position 'row' and 'col', with
- * attributes 'attr', and update ScreenLines[] and ScreenAttrs[].
- * Note: only outputs within one row, message is truncated at screen boundary!
- * Note: if ScreenLines[], row and/or col is invalid, nothing is done.
- */
+/// @see screen_puts_len
 void screen_puts(char_u *text, int row, int col, int attr)
 {
   screen_puts_len(text, -1, row, col, attr);
 }
 
-/*
- * Like screen_puts(), but output "text[len]".  When "len" is -1 output up to
- * a NUL.
- */
+///
+/// Put string '*text' on the screen at position 'row' and 'col', with
+/// attributes 'attr', and update ScreenLines[] and ScreenAttrs[].
+///
+/// @param row if ScreenLines[], row is invalid, nothing is done.
+/// @param col if ScreenLines[], col is invalid, nothing is done.
+/// @param textlen Number of bytes to copy. When "len" is -1 output up to a NUL
+/// @param attr
+///
+/// @Note: only outputs within one row, message is truncated at screen boundary!
+///
+
+/* void screen_puts_len(char_u *text, int textlen, int row, int col, int attr) */
+/* { */
+/*   if (ScreenLines == NULL || row >= screen_Rows)        /1* safety check *1/ */
+/*     return; */
+/*   off = LineOffset[row] + col; */
+/* } */
 void screen_puts_len(char_u *text, int textlen, int row, int col, int attr)
 {
   unsigned off;
@@ -5484,9 +5512,16 @@ void screen_puts_len(char_u *text, int textlen, int row, int col, int attr)
   assert((l_has_mbyte == (l_enc_utf8 || l_enc_dbcs))
          && !(l_enc_utf8 && l_enc_dbcs));
 
-  if (ScreenLines == NULL || row >= screen_Rows)        /* safety check */
+  if (ScreenLines == NULL || row > screen_Rows)        /* safety check */
+  {
+    ELOG("Wrong parameters");
     return;
+  }
   off = LineOffset[row] + col;
+  if(row == screen_Rows) {
+    off = screen_Rows * screen_Columns;
+    ILOG("offset to=%d", off);
+  }
 
   /* When drawing over the right halve of a double-wide char clear out the
    * left halve.  Only needed in a terminal. */
