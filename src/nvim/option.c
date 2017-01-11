@@ -3346,18 +3346,19 @@ skip:
   return NULL;    /* no error */
 }
 
-/*
- * Handle setting 'listchars' or 'fillchars'.
- * Returns error message, NULL if it's OK.
- */
+
+/// Handle setting 'listchars' or 'fillchars'.
+/// @param varp either &p_lcs or &p_fcs (fillchar)
+/// @return error message, NULL if it's OK.
+///
 static char_u *set_chars_option(char_u **varp)
 {
   int round, i, len, entries;
   char_u      *p, *s;
   int c1, c2 = 0;
   struct charstab {
-    int     *cp;
-    char    *name;
+    int     *cp;    /**!< char value */
+    char    *name;  /**!< char id */
   };
   static struct charstab filltab[] =
   {
@@ -3365,6 +3366,10 @@ static char_u *set_chars_option(char_u **varp)
     {&fill_stlnc,   "stlnc"},
     {&fill_vert,    "vert"},
     {&fill_fold,    "fold"},
+    {&fill_foldopen,    "foldopen"},
+    {&fill_foldclose,    "foldclose"},
+    {&fill_foldsep,    "foldsep"},
+    {&fill_foldmisc,    "foldmisc"},
     {&fill_diff,    "diff"},
   };
   static struct charstab lcstab[] =
@@ -3393,9 +3398,10 @@ static char_u *set_chars_option(char_u **varp)
     if (round > 0) {
       /* After checking that the value is valid: set defaults: space for
        * 'fillchars', NUL for 'listchars' */
-      for (i = 0; i < entries; ++i)
-        if (tab[i].cp != NULL)
-          *(tab[i].cp) = (varp == &p_lcs ? NUL : ' ');
+      // STRANGE surely a better way can be found
+      /* for (i = 0; i < entries; ++i) */
+      /*   if (tab[i].cp != NULL) */
+      /*     *(tab[i].cp) = (varp == &p_lcs ? NUL : ' '); */
       if (varp == &p_lcs)
         lcs_tab1 = NUL;
       else

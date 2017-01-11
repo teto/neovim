@@ -33,6 +33,13 @@
 # include "api/vim.c.generated.h"
 #endif
 
+///
+/// Folds are per-windowt
+//
+void nvim_create_fold(Window window, Error *err)
+{
+}
+
 /// Executes an ex-command.
 /// On VimL error: Returns the VimL error; v:errmsg is not updated.
 ///

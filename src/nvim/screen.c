@@ -2094,7 +2094,8 @@ static int
 fill_foldcolumn (
     char_u *p,
     win_T *wp,
-    int closed,                     /* TRUE=>fold_line or FALSE=>win_line */
+    int closed,                     /* TODO remove TRUE=>fold_line or FALSE=>win_line */
+    // replace with a wrap ?
     linenr_T lnum                  /* current line number */
 )
 {
@@ -2191,7 +2192,8 @@ fill_foldcolumn (
     for (i = 0; i < level; i++) {
       // TODO get matching fold width
 
-      u_char *m; // = "Z";
+      /* u_char *m; // = "Z"; */
+      int m;
       bool closed = fp[i]->fd_flags == FD_CLOSED;
       int current_level_required_cells = get_foldcolumnwidth(fp[i]->fd_flags == FD_CLOSED);
       /* if ( */
@@ -2212,9 +2214,11 @@ fill_foldcolumn (
       /*   /1* } *1/ */
       /* } else */ 
       if (closed) {
-        m = fold_chars[FM_Closed];
+        m = fill_foldclose;
+        /* fold_chars[FM_Closed]; */
       } else if(fold_starting_line == lnum){
-          m = fold_chars[FM_OpenStart];
+          /* m = fold_chars[FM_OpenStart]; */
+          m = fill_foldopen;
       }
       /* else if (first_level + i <= 9) { */
       /*   // display numbers */
@@ -2227,7 +2231,8 @@ fill_foldcolumn (
       /*   continue; */
       /* } */
       else { 
-        m = fold_chars[FM_OpenWithin]; 
+        /* m = fold_chars[FM_OpenWithin]; */ 
+        m = fill_foldsep;
         /* m = fold_chars[FM_What]; */
       }
         /* p[i] = '|'; */
@@ -2243,15 +2248,20 @@ fill_foldcolumn (
 
       /* STRNCPY(&p[i], m, STRLEN(m)); // dest/src including terminal byte */
 
-        ILOG("p before: %s (i=%d closed=%d) adding [%s] strlen(m)=%d", p, i, closed, m, STRLEN(m));
+        ILOG("p before: %s (i=%d closed=%d) strlen(m)=%d", p, i, closed,  mb_char2len(m));
         /* STRNCAT(p,m, 4); */
-        int char2cells = mb_string2cells(m);
-        STRNCPY(&p[char_counter], m, STRLEN(m)); // dest/src including terminal byte
-        char_counter += STRLEN(m);
-        if(current_level_required_cells > char2cells) {
-          /* memset( */
-          /*     STRNCPY( , " ", ); */
-        }
+        int char2cells = mb_char2cells(m);
+
+
+    /* buf[(*mb_char2bytes)(c, buf)] = NUL; */
+
+        mb_char2bytes(m, &p[char_counter]);
+        /* STRNCPY(&p[char_counter], m, STRLEN(m)); // dest/src including terminal byte */
+        char_counter += mb_char2len(m);
+        /* if(current_level_required_cells > char2cells) { */
+        /*   /1* memset( *1/ */
+        /*   /1*     STRNCPY( , " ", ); *1/ */
+        /* } */
         cell_counter += char2cells;
         ILOG("p after: %s (i=%d)", p, i);
         if(closed) {
@@ -5399,13 +5409,14 @@ theend:
 }
 
 
-/*
- * Output a single character directly to the screen and update ScreenLines.
- */
+///
+/// Output a single character directly to the screen and update ScreenLines.
+/// @see screen_puts
 void screen_putchar(int c, int row, int col, int attr)
 {
   char_u buf[MB_MAXBYTES + 1];
 
+  // TODO remove
   if (has_mbyte)
     buf[(*mb_char2bytes)(c, buf)] = NUL;
   else {

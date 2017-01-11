@@ -11273,6 +11273,7 @@ static void f_has(typval_T *argvars, typval_T *rettv, FunPtr fptr)
     "find_in_path",
     "float",
     "folding",
+    "folding_enhanced", /* temporary hack ? */
 #if defined(UNIX)
     "fork",
 #endif
