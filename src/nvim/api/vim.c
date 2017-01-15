@@ -34,10 +34,25 @@
 #endif
 
 ///
-/// Folds are per-windowt
-//
-void nvim_create_fold(Window window, Error *err)
+/// Folds are per-window
+// TODO should return a success value ? a fold object ?
+/// @see foldCreate
+void nvim_fold_create(Window window, Integer start, Integer end, Error *err)
 {
+  foldCreate(linenr_T start, linenr_T end) 
+}
+
+///
+///
+/// @see deleteFold
+void nvim_fold_delete(Window window, Integer start, Integer end, Bool recursive, Error *err)
+{
+  // TODO convert
+  deleteFold(
+    linenr_T start,
+    linenr_T end,
+    int recursive,
+    false);
 }
 
 /// Executes an ex-command.
