@@ -395,6 +395,7 @@ function Screen:_handle_mouse_off()
 end
 
 function Screen:_handle_mode_change(mode)
+  print( "MODE ="..mode)
   assert(mode == 'insert' or mode == 'replace'
         or mode == 'normal' or mode == 'cmdline')
   self.mode = mode

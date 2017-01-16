@@ -15,6 +15,7 @@
 #include "nvim/vim.h"
 #include "nvim/buffer.h"
 #include "nvim/file_search.h"
+#include "nvim/fold.h"
 #include "nvim/window.h"
 #include "nvim/types.h"
 #include "nvim/ex_docmd.h"
@@ -39,19 +40,19 @@
 /// @see foldCreate
 void nvim_fold_create(Window window, Integer start, Integer end, Error *err)
 {
-  foldCreate(linenr_T start, linenr_T end) 
+  foldCreate(start, end);
 }
 
 ///
 ///
 /// @see deleteFold
-void nvim_fold_delete(Window window, Integer start, Integer end, Bool recursive, Error *err)
+void nvim_fold_delete(Window window, Integer start, Integer end, Boolean recursive, Error *err)
 {
   // TODO convert
   deleteFold(
-    linenr_T start,
-    linenr_T end,
-    int recursive,
+    start,
+    end,
+    recursive, // int
     false);
 }
 
