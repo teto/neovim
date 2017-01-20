@@ -215,6 +215,10 @@ end
 -- condition:   Function asserting some arbitrary condition.
 -- any:         true: Succeed if `expected` matches ANY screen line(s).
 --              false (default): `expected` must match screen exactly.
+function included(t1, t2)
+
+end
+
 function Screen:expect(expected, attr_ids, attr_ignore, condition, any)
   -- remove the last line and dedent
   expected = dedent(expected:gsub('\n[ ]+$', ''))
@@ -224,6 +228,7 @@ function Screen:expect(expected, attr_ids, attr_ignore, condition, any)
     row = row:sub(1, #row - 1)
     table.insert(expected_rows, row)
   end
+  -- assert(#expected_rows >= self._height, "too few rows")
   local ids = attr_ids or self._default_attr_ids
   local ignore = attr_ignore or self._default_attr_ignore
   self:wait(function()
@@ -240,16 +245,24 @@ function Screen:expect(expected, attr_ids, attr_ignore, condition, any)
 
     if any then
       -- Search for `expected` anywhere in the screen lines.
+      local expected_screen_str = table.concat(expected_rows, '\n')
       local actual_screen_str = table.concat(actual_rows, '\n')
-      if nil == string.find(actual_screen_str, expected) then
+      if nil == string.find(actual_screen_str, expected_screen_str) then
         return (
           'Failed to match any screen lines.\n'
-          .. 'Expected (anywhere): "' .. expected .. '"\n'
+          .. 'Expected (anywhere):\n  |' .. table.concat(expected_rows, '|\n  |') .. '\n'
           .. 'Actual:\n  |' .. table.concat(actual_rows, '|\n  |') .. '|\n\n')
       end
     else
       -- `expected` must match the screen lines exactly.
+      local matching_rows_count = 0
       for i = 1, self._height do
+        -- if any then
+
+        --   if expected_rows[matching_rows_count] == actual_rows[i] then
+        --     matching_rows_count
+        --   else
+        -- end
         if expected_rows[i] ~= actual_rows[i] then
           local msg_expected_rows = {}
           for j = 1, #expected_rows do
