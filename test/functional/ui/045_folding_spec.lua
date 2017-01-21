@@ -2,8 +2,9 @@
 local Screen = require('test.functional.ui.screen')
 
 local helpers = require('test.functional.helpers')(after_each)
-local feed, insert, clear, execute, expect =
-  helpers.feed, helpers.insert, helpers.clear, helpers.execute, helpers.expect
+local nvim_feed, feed, insert, clear, execute, expect =
+  helpers.nvim_feed, helpers.feed, helpers.insert, helpers.clear, helpers.execute, helpers.expect
+
 local session = helpers
 
 describe('folding', function()
@@ -12,7 +13,8 @@ describe('folding', function()
   before_each(function()
     session.clear()
 
-    screen = Screen.new(20, 8)
+    -- screen = Screen.new(20, 8)
+    screen = Screen.new(6,8)
     screen:attach()
   end)
   after_each(function()
@@ -174,22 +176,8 @@ describe('folding', function()
       9 ii
       a jj
       b kk
-      last
-    ]])
-    -- TODO pass as single string
-    -- execute('fun Flvl()')
-    -- execute('  let l = getline(v:lnum)')
-    -- execute('  if l =~ "bb$"')
-    -- execute('    return 2')
-    -- execute('  elseif l =~ "gg$"')
-    -- execute('    return "s1"')
-    -- execute('  elseif l =~ "ii$"')
-    -- execute('    return ">2"')
-    -- execute('  elseif l =~ "kk$"')
-    -- execute('    return "0"')
-    -- execute('  endif')
-    -- execute('  return "="')
-    -- execute('endfun')
+      last ]])
+
     execute([[
     fun Flvl()
      let l = getline(v:lnum)
@@ -214,45 +202,68 @@ describe('folding', function()
     execute('call append("$", foldlevel("."))')
     execute('/kk$')
     execute('call append("$", foldlevel("."))')
-    -- execute('0,/^last/delete') -- delete all previous lines, not needed
-    -- execute('delfun Flvl')
+    -- execute('0,/^last/delete') -- delete all previous lines, could be removed if we had a way to check against buffer rather than screen
 
-    -- -- Assert buffer contents.
-    -- c ce qu'on doit trouver
-    screen:expect([[
-      expr 2              |
-      1                   |
-      2                   |
-      0                   |
-      ]], nil,nil,nil, true)
+    -- Assert buffer contents.
+    -- screen:expect([[
+    --   expr 2              |
+    --   1                   |
+    --   2                   |
+    --   0                   |
+    --   ]], nil,nil,nil, true)
+    expect([[
+      expr 2
+      1
+      2
+      0]], true)
   end)
-
   -- TODO tester with fdc=3 and special fillchars
-
-  -- it('can open after fold after :move', function()
-
-  --   screen:try_resize(35, 8)
-  --   insert([[
-  --     Test fdm=indent and :move bug END
-  --     line2
-  --     	Test fdm=indent START
-  --     	line3
-  --     	line4
-  --   ]])
-
-  --   execute('set noai nosta')
-  --   execute('set fdm=indent')
-  --   execute('4')
-  --   feed('zc')
-  --   execute('m1')
-  --   feed('zR')
-
-  --   screen:expect([[
-  --     	Test fdm=indent START             |
-  --     	line3                             |
-  --     	^line4                              |
-  --     Test fdm=indent and :move bug END|
-  --     line2                                |
-  --     ]])
+  -- it('simple test', function()
+  --   r2=[[
+  --   	toto
+  --   test ]]
+  --   print("R2\n"..helpers.dedent(r2))
+-- -- session.clear()
+-- -- screen = Screen.new(6, 2)
+  --   -- screen:try_resize(6, 2)
+  --   -- sleep(1)
+  --   -- screen:attach()
+  --   -- nvim_feed("i")
+  --   -- nvim_feed(r2)
+  --   execute('set noai nosta ')
+  --   insert(r2)
+  --   execute('')
+  --   screen:snapshot_util()
+  --   -- screen:expect([[
+  --   -- 	toto|
+  --   -- test |]])
   -- end)
+
+  it('can open after fold after :move', function()
+
+    screen:try_resize(35, 8)
+    r = [[
+      Test fdm=indent and :move bug END
+      line2
+      	Test fdm=indent START
+      	line3
+      	line4]]
+    insert(r)
+    execute('set noai nosta ')
+    execute('set sw=2')
+    execute('set noet')
+    execute('set fdm=indent')
+    execute('1m1')
+    feed('2jzc')
+    execute('m0')
+    feed('zR')
+
+    expect([[
+      	Test fdm=indent START
+      	line3
+      	line4
+      Test fdm=indent and :move bug END
+      line2]], true)
+  end)
 end)
+

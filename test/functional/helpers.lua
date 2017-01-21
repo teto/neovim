@@ -13,6 +13,7 @@ local check_logs = global_helpers.check_logs
 local neq = global_helpers.neq
 local eq = global_helpers.eq
 local ok = global_helpers.ok
+local subset = global_helpers.substr
 
 local start_dir = lfs.currentdir()
 local nvim_prog = os.getenv('NVIM_PROG') or 'build/bin/nvim'
@@ -308,6 +309,7 @@ end
 local function insert(...)
   nvim_feed('i')
   for _, v in ipairs({...}) do
+    print("INSERTION")
     local escaped = v:gsub('<', '<lt>')
     rawfeed(escaped)
   end
@@ -407,7 +409,14 @@ local function curtab(method, ...)
   return tabpage(method, 0, ...)
 end
 
-local function expect(contents)
+local function expect(contents, any)
+  contents = dedent(contents)
+  if any then
+    print("ANNNNYYY")
+    print(string.find(curbuf_contents(), contents))
+    return subset(contents, curbuf_contents()) 
+    -- return assert.is_true(string.find(actual, pattern))
+  end
   return eq(dedent(contents), curbuf_contents())
 end
 
@@ -544,6 +553,7 @@ return function(after_each)
     dedent = dedent,
     source = source,
     rawfeed = rawfeed,
+    nvim_feed = nvim_feed,
     insert = insert,
     feed = feed,
     execute = execute,

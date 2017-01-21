@@ -221,12 +221,16 @@ end
 
 function Screen:expect(expected, attr_ids, attr_ignore, condition, any)
   -- remove the last line and dedent
+  print("GSUB"..expected:gsub('\n[ ]+$', '')) -- ok
+
   expected = dedent(expected:gsub('\n[ ]+$', ''))
+  print("DEDENTED\n"..expected)
   local expected_rows = {}
   for row in expected:gmatch('[^\n]+') do
     -- the last character should be the screen delimiter
     row = row:sub(1, #row - 1)
     table.insert(expected_rows, row)
+    print("ROW="..row)
   end
   -- assert(#expected_rows >= self._height, "too few rows")
   local ids = attr_ids or self._default_attr_ids
@@ -240,17 +244,21 @@ function Screen:expect(expected, attr_ids, attr_ignore, condition, any)
     end
     local actual_rows = {}
     for i = 1, self._height do
+      -- print("ACTUAL ROW="..self._rows[i])
       actual_rows[i] = self:_row_repr(self._rows[i], ids, ignore)
+      print("REPR ROW="..actual_rows[i])
     end
 
     if any then
       -- Search for `expected` anywhere in the screen lines.
       local expected_screen_str = table.concat(expected_rows, '\n')
       local actual_screen_str = table.concat(actual_rows, '\n')
+      print ("EXPECTED=\n"..expected_screen_str)
+      print ("ACTUAL=\n"..actual_screen_str)
       if nil == string.find(actual_screen_str, expected_screen_str) then
         return (
           'Failed to match any screen lines.\n'
-          .. 'Expected (anywhere):\n  |' .. table.concat(expected_rows, '|\n  |') .. '\n'
+          .. 'Expected (anywhere):\n  |' .. table.concat(expected_rows, '|\n  |') .. '|\n\n'
           .. 'Actual:\n  |' .. table.concat(actual_rows, '|\n  |') .. '|\n\n')
       end
     else

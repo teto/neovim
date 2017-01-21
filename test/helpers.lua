@@ -16,6 +16,9 @@ end
 local ok = function(res)
   return assert.is_true(res)
 end
+local subset = function(pattern, actual)
+  return assert.is_true(nil ~= string.find(actual, pattern), "expected substring")
+end
 
 local function check_logs()
   local log_dir = os.getenv('LOG_DIR')
@@ -94,6 +97,7 @@ return {
   eq = eq,
   neq = neq,
   ok = ok,
+  substr = subset,
   check_logs = check_logs,
   uname = uname,
   tmpname = tmpname,
