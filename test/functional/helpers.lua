@@ -309,7 +309,6 @@ end
 local function insert(...)
   nvim_feed('i')
   for _, v in ipairs({...}) do
-    print("INSERTION")
     local escaped = v:gsub('<', '<lt>')
     rawfeed(escaped)
   end
@@ -412,8 +411,8 @@ end
 local function expect(contents, any)
   contents = dedent(contents)
   if any then
-    print("ANNNNYYY")
-    print(string.find(curbuf_contents(), contents))
+    -- print("ANNNNYYY")
+    -- print(string.find(curbuf_contents(), contents))
     return subset(contents, curbuf_contents()) 
     -- return assert.is_true(string.find(actual, pattern))
   end

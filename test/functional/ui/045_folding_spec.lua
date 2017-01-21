@@ -13,88 +13,74 @@ describe('folding', function()
   before_each(function()
     session.clear()
 
-    -- screen = Screen.new(20, 8)
-    screen = Screen.new(6,8)
+    screen = Screen.new(20, 8)
     screen:attach()
   end)
   after_each(function()
-    -- child_session.feed_data("\3") -- Ctrl-C
     screen:detach()
   end)
 
-  -- it('Test creation, opening, moving to the end and close', function()
-  -- -- it('is working', function()
-  --   -- todo set fold 
-  --   insert([[
-  --     1 aa
-  --     2 bb
-  --     3 cc
-  --     last
-  --     ]])
+  it('Test creation, opening, moving to the end and close', function()
+    insert([[
+      1 aa
+      2 bb
+      3 cc
+      last
+      ]])
 
-  --   -- Basic test if a fold can be created, opened, moving to the end and
-  --   -- closed.
-  --   execute('1')
-  --   feed('zf2j')
-  --   execute('call append("$", "manual " . getline(foldclosed(".")))')
-  --   feed('zo')
-  --   execute('call append("$", foldclosed("."))')
-  --   feed(']z')
-  --   execute('call append("$", getline("."))')
-  --   feed('zc')
-  --   execute('call append("$", getline(foldclosed(".")))')
-  --   execute('silent 1,3d')
+    -- Basic test if a fold can be created, opened, moving to the end and
+    -- closed.
+    execute('1')
+    feed('zf2j')
+    execute('call append("$", "manual " . getline(foldclosed(".")))')
+    feed('zo')
+    execute('call append("$", foldclosed("."))')
+    feed(']z')
+    execute('call append("$", getline("."))')
+    feed('zc')
+    execute('call append("$", getline(foldclosed(".")))')
 
-  --   expected = screen:snapshot_util({},true)
-  --   -- 3rd line weird: to check
-  --   screen:expect([[
-  --     ^last                |
-  --                         |
-  --     manual 1 aa         |
-  --     -1                  |
-  --     3 cc                |
-  --     1 aa                |
-  --     ~                   |
-  --                         |]])
-  --     -- , nil, nil, nil, true)
-  --     -- any used in screen:expect([[Interrupt]], nil, nil, nil, true) in ctrl_c_spec.lua
-  -- end)
+    expected = screen:snapshot_util({},true)
 
-  -- it("Test folding with markers", function()
+    expect([[
+      manual 1 aa
+      -1
+      3 cc
+      1 aa]], true)
+  end)
 
-  --   screen:try_resize(20, 10)
-  --   insert([[
-  --     dd {{{
-  --     ee {{{ }}}
-  --     ff }}}
-  --   ]])
-  --   -- fdc ?
-  --   execute('set fdm=marker fdl=1')
-  --   execute('2')
-  --   execute('call append("$", "line 2 foldlevel=" . foldlevel("."))')
-  --   feed('[z') -- should go to first line of the fold
-  --   execute('call append("$", foldlevel("."))')
-  --   feed('jo{{ <esc>r{jj') -- writes '{{{' and moves 2 lines bot
-  --   execute('call append("$", foldlevel("."))')
-  --   feed('kYpj')
-  --   execute('call append("$", foldlevel("."))')
+  it("Test folding with markers", function()
 
-  --   -- should be ok but here it bugs because of neovim imo
-  --   expected = screen:snapshot_util({},true)
-  --   screen:expect([[
-  --       dd {{{            |
-  --       ee {{{ }}}        |
-  --     {{{                 |
-  --       ff }}}            |
-  --       ff }}}            |
-  --     ^                    |
-  --     line 2 foldlevel=2  |
-  --     1                   |
-  --     1                   |
-  --                         |
-  --   ]])
+    screen:try_resize(20, 10)
+    insert([[
+      dd {{{
+      ee {{{ }}}
+      ff }}}
+    ]])
+    execute('set fdm=marker fdl=1')
+    execute('2')
+    execute('call append("$", "line 2 foldlevel=" . foldlevel("."))')
+    feed('[z')
+    execute('call append("$", foldlevel("."))')
+    feed('jo{{ <esc>r{jj') -- writes '{{{' and moves 2 lines bot
+    execute('call append("$", foldlevel("."))')
+    feed('kYpj')
+    execute('call append("$", foldlevel("."))')
 
-  -- end)
+    screen:expect([[
+        dd {{{            |
+        ee {{{ }}}        |
+      {{{                 |
+        ff }}}            |
+        ff }}}            |
+      ^                    |
+      line 2 foldlevel=2  |
+      1                   |
+      1                   |
+                          |
+    ]])
+
+  end)
 
   it("Test folding with indent.", function()
     screen:try_resize(20, 8)
@@ -107,7 +93,6 @@ describe('folding', function()
     ]])
     execute('call append("$", "foldlevel line3=" . foldlevel(3))')
     execute('call append("$", foldlevel(2))')
-    -- execute('set foldlevel=5')
     feed('zR')
 
     screen:expect([[
@@ -122,9 +107,7 @@ describe('folding', function()
     ]])
   end)
 
-  -- this one is failing
   it("Test syntax folding", function()
-
     screen:try_resize(35, 15)
     insert([[
       1 aa
@@ -209,6 +192,7 @@ describe('folding', function()
       2
       0]], true)
   end)
+
   it('can open after fold after :move', function()
 
     screen:try_resize(35, 8)
@@ -220,8 +204,6 @@ describe('folding', function()
       	line4]]
     insert(r)
     execute('set noai nosta ')
-    execute('set sw=2')
-    execute('set noet')
     execute('set fdm=indent')
     execute('1m1')
     feed('2jzc')

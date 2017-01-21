@@ -17,7 +17,8 @@ local ok = function(res)
   return assert.is_true(res)
 end
 local subset = function(pattern, actual)
-  return assert.is_true(nil ~= string.find(actual, pattern), "expected substring")
+  print("Lookin for:\n"..pattern.."\nin:\n"..actual)
+  return assert.is_true(nil ~= string.find(actual, pattern, 1, true), "expected substring")
 end
 
 local function check_logs()
