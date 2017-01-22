@@ -1730,17 +1730,17 @@ static void fold_line(win_T *wp, long fold_count,
   if (fdc > 0) {
   /* current_ScreenLine = new_ScreenLines + Rows * Columns; */
     // TODO take into account n_extra ?
-    int n_extra = fill_foldcolumn(buf, wp, TRUE, lnum);
-    ILOG("n_extra=%d buf=%s", n_extra, buf);
-    ILOG("row=%d col=%d", row, col);
+    int n_extra = fill_foldcolumn(buf, wp, TRUE, lnum, FALSE);
+    /* ILOG("n_extra=%d buf=%s", n_extra, buf); */
+    /* ILOG("screen_row=%d col=%d wrapped=%d", row, col, LineWraps[lnum]); */
     // offset 
 /* screen_Rows */
-    ILOG("screen_rows=%d off=%d vs mine=%d ", screen_Rows, off, 
+    /* ILOG("screen_rows=%d off=%d vs mine=%d ", screen_Rows, off, */ 
         /* LineOffset[screen_Rows-1], */
         /* LineOffset[screen_Rows], */
-        screen_Rows*screen_Columns
-        );
-
+        /* screen_Rows*screen_Columns */
+        /* ); */
+    /* ILOG("wrapped line screen_row=%d", row */
     /// YES !! 
         /* screen_Rows*screen_Columns  == off ! */
 
@@ -2085,6 +2085,7 @@ int get_foldcolumnwidth(bool closed) {
 /// Only to be called when 'foldcolumn' > 0.
 /// @param p To fill with characters
 /// @param closed 
+/// @param wrapped 
 /// TODO ideally we should know max number of opened/closed on a line to 
 /// dynamically adapt the size of the foldcolumn
 /// hasFoldingWin  should be improved to count the number of subsequent
@@ -2096,7 +2097,8 @@ fill_foldcolumn (
     win_T *wp,
     int closed,                     /* TODO remove TRUE=>fold_line or FALSE=>win_line */
     // replace with a wrap ?
-    linenr_T lnum                  /* current line number */
+    linenr_T lnum,                  /* current line number */
+    int wrapped
 )
 {
   int i = 0;
@@ -2165,7 +2167,7 @@ fill_foldcolumn (
     /* TODO here we shall compute first level */
     for (int i = 0; i < results.ga_len; ++i) {
       /* results */
-      ILOG("line %d: level=%d #folds=%d ===", lnum, level,  results.ga_len);
+      ILOG("line %d: level=%d #folds=%d wrapped=%d ===", lnum, level,  results.ga_len, LineWraps[lnum]);
       /* ILOG("fold top=%d len=%d", fp[i]->fd_top, fp[i]->fd_len); */
 
       needed_cells += get_foldcolumnwidth(fp[i]->fd_flags == FD_CLOSED);
@@ -2216,7 +2218,7 @@ fill_foldcolumn (
       if (closed) {
         m = fill_foldclose;
         /* fold_chars[FM_Closed]; */
-      } else if(fold_starting_line == lnum){
+      } else if(fold_starting_line == lnum && !wrapped){
           /* m = fold_chars[FM_OpenStart]; */
           m = fill_foldopen;
       }
@@ -2288,13 +2290,19 @@ fill_foldcolumn (
   return MAX(char_counter + (fdc-cell_counter), fdc);
 }
 
-/*
- * Display line "lnum" of window 'wp' on the screen.
- * Start at row "startrow", stop when "endrow" is reached.
- * wp->w_virtcol needs to be valid.
- *
- * Return the number of last row the line occupies.
- */
+///
+/// Display line "lnum" of window 'wp' on the screen.
+/// Start at row "startrow", stop when "endrow" is reached.
+/// wp->w_virtcol needs to be valid.
+///
+/// @param wp 
+/// @param lnum line number (absolute)
+/// @param startrow Relative to screen, 0 < win_height
+/// @param endrow see startrow
+/// @param nochange not updating for changed text
+///
+/// @return the number of last row the line occupies.
+/// 
 static int
 win_line (
     win_T *wp,
@@ -2892,7 +2900,16 @@ win_line (
         if (fdc > 0) {
           /* ILOG("fdc=%d", fdc); */
           // Draw the 'foldcolumn' not closed
-          n_extra = fill_foldcolumn(extra, wp, false, lnum);
+          
+          int wrapped = TRUE;
+          if (row == startrow + filler_lines && filler_todo <= 0)
+            wrapped= FALSE;
+            /* not sure I undersstand but this is how it's done for */
+              
+          n_extra = fill_foldcolumn(extra, wp, false, lnum, wrapped);
+          if(wrapped)
+            ILOG("screen_row=%d lnum=%d col=%d wrapped=%d", screen_row, lnum, col, filler_todo);
+/* LineWraps[row] */
           /** TODO recuperer le n_extra comme retour de */
           /* n_extra = fdc; */
 
