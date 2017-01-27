@@ -3348,6 +3348,8 @@ skip:
 
 
 /// Handle setting 'listchars' or 'fillchars'.
+/// Assume monocell characters
+///
 /// @param varp either &p_lcs or &p_fcs (fillchar)
 /// @return error message, NULL if it's OK.
 ///
@@ -3366,10 +3368,10 @@ static char_u *set_chars_option(char_u **varp)
     {&fill_stlnc,   "stlnc"},
     {&fill_vert,    "vert"},
     {&fill_fold,    "fold"},
-    {&fill_foldopen,    "foldopen"},
-    {&fill_foldclose,    "foldclose"},
-    {&fill_foldsep,    "foldsep"},
-    {&fill_foldmisc,    "foldmisc"},
+    {&fold_chars[FM_OpenStart],    "foldopen"},
+    {&fold_chars[FM_Closed],    "foldclose"},
+    {&fold_chars[FM_OpenWithin],    "foldsep"},
+    /* {&fold_chars[FM_What],    "foldmisc"}, */
     {&fill_diff,    "diff"},
   };
   static struct charstab lcstab[] =

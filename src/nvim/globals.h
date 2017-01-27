@@ -96,6 +96,15 @@ typedef enum {
   kTrue  = 1,
 } TriState;
 
+// enum to identify character
+/// definition order matters !
+typedef enum {
+  /* FM_What, // <TODO supress */
+  FM_OpenWithin, // vertical sep
+  FM_OpenStart,
+  FM_Closed
+} EFoldMarker;
+
 /* Values for "starting" */
 #define NO_SCREEN       2       /* no screen updating yet */
 #define NO_BUFFERS      1       /* not all buffers loaded yet */
@@ -1031,18 +1040,16 @@ EXTERN int fill_stl INIT(= ' ');
 EXTERN int fill_stlnc INIT(= ' ');
 EXTERN int fill_vert INIT(= ' ');
 EXTERN int fill_fold INIT(= '-');
-EXTERN int fill_foldopen INIT(= '-');
-EXTERN int fill_foldclose INIT(= '+');
-EXTERN int fill_foldsep INIT(= '[');
-EXTERN int fill_foldmisc INIT(= '>');
+/* EXTERN int fill_foldopen INIT(= '-'); */
+/* EXTERN int fill_foldclose INIT(= '+'); */
+/* EXTERN int fill_foldsep INIT(= '['); */
+/* EXTERN int fill_foldmisc INIT(= '>'); */
 EXTERN int fill_diff INIT(= '-');
-// MATT
-EXTERN char_u *fold_chars[] INIT(= {
-  (char_u *)"▾", /* - */
-  /* (char_u *)"|", // ❘ │ */
-  (char_u *)"│", // 1 characeter 3 bytes for U2052 ❘ │
-  (char_u *)">", // FM_What
-  (char_u *)"▸", // /* ＋  or ▾  ▸ */
+// MATT ＋  or ▾  ▸ 
+EXTERN int fold_chars[] INIT(= {
+  9474, // FM_OpenWithin
+  9662, // FM_OpenStart
+  9656  // FM_Closed
 });
 
 /* Whether 'keymodel' contains "stopsel" and "startsel". */

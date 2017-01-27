@@ -1487,23 +1487,23 @@ static void foldMarkAdjustRecurse(garray_T *gap, linenr_T line1, linenr_T line2,
 /* } */
 
 /// Used 
-int getWidestNestingRecurse(int accumulated_cellwidth, garray_T *gap)
-{
-  int result;
-  int maxwidth = accumulated_cellwidth;
-  fold_T      *fp;
+/* int getWidestNestingRecurse(int accumulated_cellwidth, garray_T *gap) */
+/* { */
+/*   int result; */
+/*   int maxwidth = accumulated_cellwidth; */
+/*   fold_T      *fp; */
 
-  fp = (fold_T *)gap->ga_data;
-  for (int i = 0; i < gap->ga_len; ++i) {
-      accumulated_cellwidth += get_foldcolumnwidth(&fp[i].fd_flags == FD_CLOSED);
+/*   fp = (fold_T *)gap->ga_data; */
+/*   for (int i = 0; i < gap->ga_len; ++i) { */
+/*       accumulated_cellwidth += get_foldcolumnwidth(&fp[i].fd_flags == FD_CLOSED); */
 
-    result = getWidestNestingRecurse(accumulated_cellwidth, &fp[i].fd_nested);
-    if (result > maxwidth)
-      maxwidth = result;
-  }
+/*     result = getWidestNestingRecurse(accumulated_cellwidth, &fp[i].fd_nested); */
+/*     if (result > maxwidth) */
+/*       maxwidth = result; */
+/*   } */
 
-  return maxwidth;
-}
+/*   return maxwidth; */
+/* } */
 
 /* getDeepestNesting() {{{2 */
 /*

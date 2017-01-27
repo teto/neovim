@@ -1756,7 +1756,7 @@ static void fold_line(win_T *wp, long fold_count,
     /*     ScreenLines[off + wp->w_width - i - 1 - col] = buf[i]; */
     /* } else */
       /* TODO use screen_puts_len(); */
-      ILOG("before ScreenLines=%s", ScreenLines + off);
+      /* ILOG("before ScreenLines=%s", ScreenLines + off); */
       /* copy_text_attr(off + col, "XXX", 3, hl_attr(HLF_FC)); */
 
       // en fait faudrait que ca ecrive dans current_ScreenLine qui est
@@ -1770,7 +1770,7 @@ static void fold_line(win_T *wp, long fold_count,
       /* screen_puts_len( (char_u*)"XXX", 3, screen_Rows, col, hl_attr(HLF_FC)); */
       /* screen_puts_len("▸--", 3, screen_Rows, col, hl_attr(HLF_FC)); */
       screen_puts_len(buf, n_extra, screen_Rows, col, hl_attr(HLF_FC));
-      ILOG("after ScreenLines=%s", ScreenLines + off);
+      /* ILOG("after ScreenLines=%s", ScreenLines + off); */
       /* copy_text_attr(off + col, buf, n_extra, hl_attr(HLF_FC)); */
     col += fdc;
   }
@@ -2065,20 +2065,51 @@ static void copy_text_attr(int off, char_u *buf, int len, int attr)
     ScreenAttrs[off + i] = attr;
 }
 
-// enum to identify character
-enum {
-  FM_OpenStart,
-  FM_OpenWithin,
-  FM_What,
-  FM_Closed
-} EFoldMarker;
 
-int get_foldcolumnwidth(bool closed) {
-  if (closed)
-    return mb_string2cells(fold_chars[FM_Closed]);
-  else 
-      return MAX(mb_string2cells(fold_chars[FM_OpenStart]), mb_string2cells(fold_chars[FM_OpenWithin]));
+/* int get_foldcolumnwidth(bool closed) { */
+/*   if (closed) */
+/*     return mb_string2cells(fold_chars[FM_Closed]); */
+/*   else */ 
+/*       return MAX(mb_string2cells(fold_chars[FM_OpenStart]), mb_string2cells(fold_chars[FM_OpenWithin])); */
+/* } */
+
+
+///
+///
+/// @return 
+static 
+EFoldMarker
+fill_foldcolumn_single (
+                        fold_T *fp,
+                        linenr_T current_line,
+                        linenr_T *fold_starting_line,
+                        int wrapped,
+                        int respectfoldlevel
+                       )
+{
+  bool closed = (fp->fd_flags == FD_CLOSED) || ((fp->fd_flags == FD_LEVEL) && respectfoldlevel);
+  *fold_starting_line += fp->fd_top;
+  ILOG("flags ? %d", fp->fd_flags);
+
+      /* if (use_level || fp->fd_flags == FD_LEVEL) { */
+      /*   use_level = TRUE; */
+      /*   if (level >= curwin->w_p_fdl) */
+      /*     closed = TRUE; */
+  if (closed) {
+    return FM_Closed;
+  }
+  else if((current_line == (*fold_starting_line)) && (wrapped == 0)){
+    return FM_OpenStart;
+  }
+  else {
+
+  /* ILOG("checking current_line=%d vs fold_start=%d (wrapped=%d)", current_line, *fold_starting_line, wrapped); */
+    /* ILOG("wrapped %d", wrapped); */
+    return FM_OpenWithin;
+  }
 }
+
+
 
 ///
 /// Fill the foldcolumn at "p" for window "wp".
@@ -2091,11 +2122,12 @@ int get_foldcolumnwidth(bool closed) {
 /// hasFoldingWin  should be improved to count the number of subsequent
 // nested and closed folds and fill foldinfo_T with that information
 // TODO should be able to pass a fold_T ?
+// Assume monocell characters
 static int
 fill_foldcolumn (
     char_u *p,
     win_T *wp,
-    int closed,                     /* TODO remove TRUE=>fold_line or FALSE=>win_line */
+    int closed, /* TODO remove TRUE=>fold_line or FALSE=>win_line */
     // replace with a wrap ?
     linenr_T lnum,                  /* current line number */
     int wrapped
@@ -2103,22 +2135,12 @@ fill_foldcolumn (
 {
   int i = 0;
   int level;
-  int first_level;
-  int needed_cells = 0;
   int cell_counter = 0;
-  int empty; // TODO convert to bool ?
-  /* int maxcolwidth = 1; */
   fold_T **fp = NULL; // Top level/parent fold
   int fdc = compute_foldcolumn(wp, 0); /* allowed width in cells */
-  int available_cells = fdc;
 
   int char_counter = 0;
   garray_T results = GA_EMPTY_INIT_VALUE; /* init structures number */
-  // HACK to get the max width of a column
-  /* for(i = 0; i < FM_Closed + 1; ++i){ */
-  /*   /1* if (mb_string2cells(items[i]) > maxcolwidth) *1/ */
-  /*     maxcolwidth = MAX(maxcolwidth,mb_string2cells(items[i])); */
-  /* } */
 
   /* int width = 0; */
   /* maxcolwidth = MAX(get_closedfoldcolumnwidth(), get_openfoldcolumnwidth()); */
@@ -2129,168 +2151,83 @@ fill_foldcolumn (
   // here fp contains the valid top level fold
   // don't need that
   level = win_foldinfo.fi_level;
-  // from here on
+  // TO update folds
+  foldedCount(wp, lnum, &win_foldinfo);
+  /* getDeepestNesting(); */
+  /* checkupdate(wp); */
 
   // if there are folds
   if (level > 0) {
-    /* if (!foldFind(&wp->w_folds , lnum, &fp)) { */
-    /*   ELOG("Not possible !"); */
-    /* } */
+    /* ILOG("invalid ? %d", wp->w_foldinvalid); */
 
-    // Take into account closed/open states !
-    // Not necessarely Widest, just what is needed
-    /* int needed_cell_nb = getWidestNestingRecurse(1, &fp->fd_nested); */
-    // If there is only one column put more info in it.
-    /* empty = (fdc == 1) ? 0 : 1; */
-
-    // A priori we have the following number of cell available
-    // TODO compute first_level based sur le plus contraignant des 
-    /* available_cells = win_foldinfo.fi_widest_cell_width; */
-    // If the column is too narrow, we start at the lowest level that
-    // fits and use numbers to indicated the depth.
-    // - closed
-    // - closed + 1
-    /* first_level = level - fdc  - closed + 1 + empty; */
-    /* if (first_level < 1) { */
-    /*   first_level = 1; */
-    /* } */
-
-    // TODO first level depends on size of closed an open columns 
-    // TODO use getWidestNestingRecurse
-
-    /* width += level * get_openfoldcolumnwidth() ; */
-    /* width += (level - win_foldinfo.fi_low_level) * get_closedfoldcolumnwidth(); */
     getFolds(&wp->w_folds, lnum, &results);
 
     fp = (fold_T **)results.ga_data;
-    /* assert(results.ga_data == level); TODO why not ?*/
-    /* TODO here we shall compute first level */
-    for (int i = 0; i < results.ga_len; ++i) {
-      /* results */
-      ILOG("line %d: level=%d #folds=%d wrapped=%d ===", lnum, level,  results.ga_len, LineWraps[lnum]);
-      /* ILOG("fold top=%d len=%d", fp[i]->fd_top, fp[i]->fd_len); */
-
-      needed_cells += get_foldcolumnwidth(fp[i]->fd_flags == FD_CLOSED);
-      /* if (fp[i]->fd_flags == FD_CLOSED) */
-      /*   needed_cells += get_openfoldcolumnwidth(); */
-      /* else */
-      /*   needed_cells += get_closedfoldcolumnwidth(); */
-    }
-    ILOG("Needs %d cells", needed_cells);
-
-    /* if(lnum >= 2080 && lnum <= 2082) { */
-    /*   /1* ILOG("maxcolwidth=%d", maxcolwidth); *1/ */
-    /*   ILOG("%d: level=%d, lowest=%d first_level=%d", lnum, level, win_foldinfo.fi_low_level, first_level); */
-    /*   /1* ILOG("fi_widest_cell_width=%d", available_cells); *1/ */
-    /*   ILOG("closedwidth=%d openwidth=%d", get_openfoldcolumnwidth(), get_closedfoldcolumnwidth()); */
-    /* } */
-
     // TODO better init it ?
-    int fold_starting_line = 0;
+    linenr_T fold_starting_line = 0;
 
     // TODO here we should concatenate
     // i renamed to current_cell
     // current_cell != level
     // iterate on levels
 
+    EFoldMarker symbol;
     /* MAX(level, FDC) */
-    for (i = 0; i < MIN(level, fdc); i++) {
+    /* i->current_depth */
+
+    ILOG("new_instance ===", fold_starting_line);
+    for (i = 0; i < MIN(level,fdc); i++) {
       // TODO get matching fold width
   
-      /* if we are in last column */
-      /* u_char *m; // = "Z"; */
-      int m;
-      bool closed = fp[i]->fd_flags == FD_CLOSED;
-      int current_level_required_cells = get_foldcolumnwidth(fp[i]->fd_flags == FD_CLOSED);
-      /* if ( */
-      fold_starting_line += fp[i]->fd_top;
+      linenr_T current_line = lnum;
 
-      // if line where the fold starts
-      // and lowest fold level that starts on that line
-      /* if (win_foldinfo.fi_lnum == lnum */
-      /*     && first_level + i >= win_foldinfo.fi_low_level) { */
-      /*     m = fold_chars[FM_OpenStart]; */
-      /* } else if (first_level == 1) { */
-      /*   m = fold_chars[FM_OpenWithin]; */
-      /* if (!closed) { */
-      /*     m = fold_chars[FM_OpenWithin]; */
-      /*   // fd_top is relative to parent */
-      /*   /1* if(fold_starting_line == lnum){ *1/ */
-      /*   /1*   m = fold_chars[FM_OpenStart]; *1/ */
-      /*   /1* } *1/ */
-      /* } else */
-      if (closed) {
-        m = fill_foldclose;
-        /* fold_chars[FM_Closed]; */
-      } else if(fold_starting_line == lnum && !wrapped){
-          /* m = fold_chars[FM_OpenStart]; */
-          m = fill_foldopen;
-      }
-      /* else if (first_level + i <= 9) { */
-      /*   // display numbers */
-      /*   /1* p[i] = '0' + first_level + i; *1/ */
+      /* &p[char_counter] */
+      // symbol closed or not ?
+      symbol = fill_foldcolumn_single(fp[i], current_line,
+          &fold_starting_line, wrapped, i >= wp->w_p_fdl );
+      ILOG("fold_start %d symbol=%d current=%d", fold_starting_line, symbol, lnum);
+      /* if last column, look for prioritary signal */
+      if(i == fdc-1)
+      {
+        /* ILOG("LAST column %d", lnum); */
+        /* symbol = FM_OpenWithin; */
+        // todo keep using i 
 
-      /*   /1* m = fold_chars[FM_What]; // temporary solution *1/ */
-      /*   int len = STRLEN(p); */
-      /*   p[len] = '0' + first_level + i; */
-      /*   p[len + 1] = '\0'; */
-      /*   continue; */
-      /* } */
-      else if (i == fdc) {
-        /* level */
-        // there we print level !? ie max_depth ?
-        /* if (i <=9){ */
-        /*   m = '0' + level; // */ 
-        /*  } */
-        /* else { */
-          m= '>'; // or sthg else
-        /* } */
-      }
-      else {
-        /* m = fold_chars[FM_OpenWithin]; */ 
-        m = fill_foldsep;
-        /* m = fold_chars[FM_What]; */
-      }
-        /* p[i] = '|'; */
-        /* strncat() |*/
-        /* STRNCAT(p, "❘", 10); // dest/src */
-        /* p[i] = m; */
-        /* strncat */
-        /* STRNCPY(&p[i], m, STRLEN(m)); // dest/src including terminal byte */
-        // MB_BYTE2LEN
-        /* i += mb_string2cells(m) - 1; */
-        /* ILOG("Car: %s", "❘"); */
-        /* ILOG("CHARLEN=%d", mb_string2cells(m)); // MB_CHARLEN(m)); */
+        // set it to i+1
+        for( i++; i < results.ga_len; i++){
+          EFoldMarker k = fill_foldcolumn_single(fp[i], current_line,
+              &fold_starting_line, wrapped, i >= wp->w_p_fdl );
+          symbol = MAX(symbol, k);
+          /* ILOG("fold_start %d", fold_starting_line); */
 
-      /* STRNCPY(&p[i], m, STRLEN(m)); // dest/src including terminal byte */
-
-        ILOG("p before: %s (i=%d closed=%d) strlen(m)=%d", p, i, closed,  mb_char2len(m));
-        /* STRNCAT(p,m, 4); */
-        int char2cells = mb_char2cells(m);
-
-
-    /* buf[(*mb_char2bytes)(c, buf)] = NUL; */
-
-        mb_char2bytes(m, &p[char_counter]);
-        /* STRNCPY(&p[char_counter], m, STRLEN(m)); // dest/src including terminal byte */
-        char_counter += mb_char2len(m);
-        /* if(current_level_required_cells > char2cells) { */
-        /*   /1* memset( *1/ */
-        /*   /1*     STRNCPY( , " ", ); *1/ */
-        /* } */
-
-        cell_counter += char2cells;
-        ILOG("p after: %s (i=%d)", p, i);
-        if(closed) {
-          break;
+          /* ILOG("level=%d computed k=%d (current line=%d?)", i, k, current_line == fold_starting_line); */
         }
+      }
+      int m = fold_chars[symbol];
+      /* ILOG("p before: %s (i=%d closed=%d) strlen(%d)=%d ", p, i, closed, symbol, mb_char2len(m)); */
+
+      // get char from state/symbol
+      int char2cells = mb_char2cells(m);
+
+      /* buf[(*mb_char2bytes)(c, buf)] = NUL; */
+
+      mb_char2bytes(m, &p[char_counter]);
+      /* STRNCPY(&p[char_counter], m, STRLEN(m)); // dest/src including terminal byte */
+      char_counter += mb_char2len(m);
+
+      cell_counter += char2cells;
+
+      /* ILOG("p after: %s (i=%d)", p, i); */
+      if(symbol == FM_Closed) {
+        break;
+      }
 
       /* if (first_level + i == level) { */
       /*   break; */
       /* } */
     }
-    ILOG("char counter=%d cell_counter=%d", char_counter, cell_counter);
-    ILOG("final p%s", p);
+    /* ILOG("char counter=%d cell_counter=%d", char_counter, cell_counter); */
+    /* ILOG("final p%s", p); */
 
   } /* end of if(level) */
 
@@ -5563,7 +5500,7 @@ void screen_puts_len(char_u *text, int textlen, int row, int col, int attr)
   off = LineOffset[row] + col;
   if(row == screen_Rows) {
     off = screen_Rows * screen_Columns;
-    ILOG("offset to=%d", off);
+    /* ILOG("offset to=%d", off); */
   }
 
   /* When drawing over the right halve of a double-wide char clear out the
