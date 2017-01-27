@@ -2163,7 +2163,7 @@ fill_foldcolumn (
     getFolds(&wp->w_folds, lnum, &results);
 
     fp = (fold_T **)results.ga_data;
-    /* assert(results.ga_data == level); */
+    /* assert(results.ga_data == level); TODO why not ?*/
     /* TODO here we shall compute first level */
     for (int i = 0; i < results.ga_len; ++i) {
       /* results */
@@ -2185,15 +2185,19 @@ fill_foldcolumn (
     /*   ILOG("closedwidth=%d openwidth=%d", get_openfoldcolumnwidth(), get_closedfoldcolumnwidth()); */
     /* } */
 
+    // TODO better init it ?
     int fold_starting_line = 0;
 
     // TODO here we should concatenate
     // i renamed to current_cell
     // current_cell != level
     // iterate on levels
-    for (i = 0; i < level; i++) {
-      // TODO get matching fold width
 
+    /* MAX(level, FDC) */
+    for (i = 0; i < MIN(level, fdc); i++) {
+      // TODO get matching fold width
+  
+      /* if we are in last column */
       /* u_char *m; // = "Z"; */
       int m;
       bool closed = fp[i]->fd_flags == FD_CLOSED;
@@ -2214,7 +2218,7 @@ fill_foldcolumn (
       /*   /1* if(fold_starting_line == lnum){ *1/ */
       /*   /1*   m = fold_chars[FM_OpenStart]; *1/ */
       /*   /1* } *1/ */
-      /* } else */ 
+      /* } else */
       if (closed) {
         m = fill_foldclose;
         /* fold_chars[FM_Closed]; */
@@ -2232,7 +2236,17 @@ fill_foldcolumn (
       /*   p[len + 1] = '\0'; */
       /*   continue; */
       /* } */
-      else { 
+      else if (i == fdc) {
+        /* level */
+        // there we print level !? ie max_depth ?
+        /* if (i <=9){ */
+        /*   m = '0' + level; // */ 
+        /*  } */
+        /* else { */
+          m= '>'; // or sthg else
+        /* } */
+      }
+      else {
         /* m = fold_chars[FM_OpenWithin]; */ 
         m = fill_foldsep;
         /* m = fold_chars[FM_What]; */
@@ -2264,6 +2278,7 @@ fill_foldcolumn (
         /*   /1* memset( *1/ */
         /*   /1*     STRNCPY( , " ", ); *1/ */
         /* } */
+
         cell_counter += char2cells;
         ILOG("p after: %s (i=%d)", p, i);
         if(closed) {
@@ -2302,7 +2317,7 @@ fill_foldcolumn (
 /// @param nochange not updating for changed text
 ///
 /// @return the number of last row the line occupies.
-/// 
+///
 static int
 win_line (
     win_T *wp,
