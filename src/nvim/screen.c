@@ -2098,6 +2098,9 @@ fill_foldcolumn_single (
   if (closed) {
     return FM_Closed;
   }
+  else if(current_line == fp->fd_len + *fold_starting_line) {
+    return FM_OpenEnd;
+  }
   else if((current_line == (*fold_starting_line)) && (wrapped == 0)){
     return FM_OpenStart;
   }

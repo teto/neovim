@@ -102,6 +102,7 @@ typedef enum {
   /* FM_What, // <TODO supress */
   FM_OpenWithin, // vertical sep
   FM_OpenStart,
+  FM_OpenEnd,    /**!< to mark */
   FM_Closed
 } EFoldMarker;
 
@@ -1049,6 +1050,7 @@ EXTERN int fill_diff INIT(= '-');
 EXTERN int fold_chars[] INIT(= {
   9474, // FM_OpenWithin
   9662, // FM_OpenStart
+  11812, // FM_OpenEnd  <FocusLost>2E  ⸤
   9656  // FM_Closed
 });
 
