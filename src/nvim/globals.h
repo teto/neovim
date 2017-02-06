@@ -1047,10 +1047,10 @@ EXTERN int fill_fold INIT(= '-');
 EXTERN int fill_diff INIT(= '-');
 // MATT ＋  or ▾  ▸ 
 EXTERN int fold_chars[] INIT(= {
-  9474, // kFoldOpenMid
-  9662, // kFoldOpenStart
-  11812, // kFoldOpenLast  <FocusLost>2E  ⸤
-  9656  // kFoldClosed
+  9474,     // kFoldOpenMid
+  9662,     // kFoldOpenStart
+  11812,    // kFoldOpenLast  <FocusLost>2E  ⸤
+  '+'       // 9656  // kFoldClosed
 });
 
 /* Whether 'keymodel' contains "stopsel" and "startsel". */

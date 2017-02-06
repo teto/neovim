@@ -1382,13 +1382,20 @@ static void win_update(win_T *wp)
        * Otherwise, display normally (can be several display lines when
        * 'wrap' is on).
        */
+
+      /// @return array
+      
+      // fold_T **fp = NULL;      // Top level/parent fold
+      garray_T results = GA_EMPTY_INIT_VALUE;
+      getFolds(&wp->w_folds, lnum, &results);
       fold_count = foldedCount(wp, lnum, &win_foldinfo);
 
       if (fold_count != 0) {
         // TODO find the matching fold
-        fold_line(wp, fold_count, &win_foldinfo, lnum, row);
-        ++row;
-        --fold_count;
+        // &win_foldinfo
+        fold_line(wp, fold_count, results.ga_len, lnum, row);
+        row++;
+        fold_count--;
         wp->w_lines[idx].wl_folded = TRUE;
         wp->w_lines[idx].wl_lastlnum = lnum + fold_count;
         did_update = DID_FOLD;
@@ -1682,10 +1689,15 @@ static int compute_foldcolumn(win_T *wp, int col)
 
 
 /// Display one folded line.
+///
 /// @param lnum Absolute line number
 /// @param row Screen row
-static void fold_line(win_T *wp, long fold_count,
-    foldinfo_T *foldinfo, linenr_T lnum, int row)
+///
+/// @see win_line
+static void fold_line(
+    win_T *wp, long fold_count,
+    int fold_level, linenr_T lnum, int row
+)
 {
   char_u buf[51];
   pos_T       *top, *bot;
@@ -1724,8 +1736,11 @@ static void fold_line(win_T *wp, long fold_count,
   // Reduce the width when there is not enough space.
   fdc = compute_foldcolumn(wp, col);
   if (fdc > 0) {
-    int n_extra = fill_foldcolumn(buf, wp, TRUE, lnum, FALSE);
-      screen_puts_len(buf, n_extra, screen_Rows, col, hl_attr(HLF_FC));
+    int n_extra = fill_foldcolumn(buf, wp, lnum, false);
+    // buf[n_extra] = '\0';
+    screen_puts_len(buf, n_extra, screen_Rows, col, hl_attr(HLF_FC));
+    ILOG("n_extra=%d buf=%s", n_extra, buf);
+    // TODO reestablish right/left
     col += fdc;
   }
 
@@ -1793,7 +1808,7 @@ static void fold_line(win_T *wp, long fold_count,
   /*
    * 4. Compose the folded-line string with 'foldtext', if set.
    */
-  text = get_foldtext(wp, lnum, lnume, foldinfo, buf);
+  text = get_foldtext(wp, lnum, lnume, fold_level, buf);
 
   txtcol = col;         /* remember where text starts */
 
@@ -2030,7 +2045,7 @@ static kFoldChar fill_foldcolumn_single(
     const fold_T *fp,
     linenr_T current_line,
     linenr_T *fold_starting_line,
-    int wrapped,
+    bool wrapped,
     bool closed
 )
 {
@@ -2066,10 +2081,10 @@ static int
 fill_foldcolumn(
     char_u *p,
     win_T *wp,
-    int closed, /* TODO remove TRUE=>fold_line or FALSE=>win_line */
+    // int closed, /* TODO remove TRUE=>fold_line or FALSE=>win_line */
     // replace with a wrap ?
     linenr_T lnum,
-    int wrapped
+    bool wrapped
 )
 {
   int i = 0;
@@ -2077,6 +2092,9 @@ fill_foldcolumn(
   int cell_counter = 0;
   fold_T **fp = NULL;      // Top level/parent fold
   int fdc = compute_foldcolumn(wp, 0);    //!< allowed width in cells
+  bool maybe_small;
+  bool use_level;
+  bool closed;
 
   int char_counter = 0;
   garray_T results = GA_EMPTY_INIT_VALUE;
@@ -2086,9 +2104,10 @@ fill_foldcolumn(
   // here fp contains the valid top level fold
   // don't need that
   // level = win_foldinfo.fi_level;
-  /* checkupdate(wp); */
+  checkupdate(wp);
   getFolds(&wp->w_folds, lnum, &results);
   level = results.ga_len;
+  // ILOG("line %d level=%d", lnum, level );
 
   // if there are folds
   if (level > 0) {
@@ -2098,15 +2117,19 @@ fill_foldcolumn(
     linenr_T fold_starting_line = 0;
 
     for (i = 0; i < MIN(level, fdc) ; i++) {
-      linenr_T current_line = lnum;
 
+      linenr_T current_line = lnum;
+      use_level = fp[i]->fd_flags == FD_LEVEL;
+
+      closed = check_closed(wp, fp[i], &use_level, i, &maybe_small, current_line-fold_starting_line+1);
       symbol = fill_foldcolumn_single(
           fp[i], current_line,
           &fold_starting_line, wrapped, closed);
+
       // if last column, look for prioritary signal
       if (i == fdc-1) {
         for (i++; i < results.ga_len; i++) {
-          bool closed = fold_is_closed(wp, fp, i);
+          bool closed = check_closed(wp, fp[i], &use_level, i, &maybe_small, current_line-fold_starting_line+1);
           kFoldChar k = fill_foldcolumn_single(
               fp[i], current_line,
               &fold_starting_line, wrapped, closed);
@@ -2117,6 +2140,8 @@ fill_foldcolumn(
       int char2cells = mb_char2cells(m);
 
       mb_char2bytes(m, &p[char_counter]);
+
+      ILOG("symbol info %s", p);
       char_counter += mb_char2len(m);
       cell_counter += char2cells;
 
@@ -2126,6 +2151,7 @@ fill_foldcolumn(
     }
   }
 
+  // always 3 ?
   return MAX(char_counter + (fdc-cell_counter), fdc);
 }
 
@@ -2140,6 +2166,7 @@ fill_foldcolumn(
 /// @param nochange not updating for changed text
 ///
 /// @return the number of last row the line occupies.
+/// @see fold_line 
 static int
 win_line (
     win_T *wp,
@@ -2735,22 +2762,15 @@ win_line (
 
         draw_state = WL_FOLD;
         if (fdc > 0) {
-          /* ILOG("fdc=%d", fdc); */
           // Draw the 'foldcolumn' not closed
-          
-          int wrapped = TRUE;
-          if (row == startrow + filler_lines && filler_todo <= 0)
-            wrapped= FALSE;
-            /* not sure I undersstand but this is how it's done for */
-              
-          n_extra = fill_foldcolumn(extra, wp, false, lnum, wrapped);
-          if(wrapped)
-            ILOG("screen_row=%d lnum=%d col=%d wrapped=%d", screen_row, lnum, col, filler_todo);
-/* LineWraps[row] */
-          /** TODO recuperer le n_extra comme retour de */
-          /* n_extra = fdc; */
-
-          /* ILOG("n_extra=%d", n_extra); */
+          bool wrapped = true;
+          if (row == startrow + filler_lines && filler_todo <= 0) {
+            wrapped= false;
+          }
+          // not sure I undersstand but this is how it's done for
+          n_extra = fill_foldcolumn(extra, wp, lnum, wrapped);
+          // if(wrapped)
+          //   ILOG("screen_row=%d lnum=%d col=%d wrapped=%d", screen_row, lnum, col, filler_todo);
           p_extra = extra;
           p_extra[n_extra] = NUL;
           c_extra = NUL;
@@ -5339,7 +5359,7 @@ void screen_puts(char_u *text, int row, int col, int attr)
 ///
 /// @param row if ScreenLines[], row is invalid, nothing is done.
 /// @param col if ScreenLines[], col is invalid, nothing is done.
-/// @param textlen Number of bytes to copy. When "len" is -1 output up to a NUL
+/// @param textlen Number of chars to copy. When "len" is -1 output up to a NUL
 /// @param attr
 ///
 /// @Note: only outputs within one row, message is truncated at screen boundary!
@@ -6156,15 +6176,16 @@ retry:
   if (l_enc_utf8) {
     new_ScreenLinesUC = xmalloc(
         (size_t)((Rows + 1) * Columns * sizeof(u8char_T)));
-    for (i = 0; i < p_mco; ++i)
+    for (i = 0; i < p_mco; i++) {
       new_ScreenLinesC[i] = xcalloc((Rows + 1) * Columns, sizeof(u8char_T));
+    }
   }
   if (l_enc_dbcs == DBCS_JPNU)
     new_ScreenLines2 = xmalloc(
         (size_t)((Rows + 1) * Columns * sizeof(schar_T)));
   new_ScreenAttrs = xmalloc((size_t)((Rows + 1) * Columns * sizeof(sattr_T)));
-  new_LineOffset = xmalloc((size_t)(Rows * sizeof(unsigned)));
-  new_LineWraps = xmalloc((size_t)(Rows * sizeof(char_u)));
+  new_LineOffset = xmalloc((size_t)((Rows + 1) * sizeof(unsigned)));
+  new_LineWraps = xmalloc((size_t)((Rows + 1) * sizeof(char_u)));
   new_tab_page_click_defs = xcalloc(
       (size_t) Columns, sizeof(*new_tab_page_click_defs));
 
@@ -6215,7 +6236,7 @@ retry:
   } else {
     done_outofmem_msg = FALSE;
 
-    for (new_row = 0; new_row < Rows; ++new_row) {
+    for (new_row = 0; new_row < Rows + 1; ++new_row) {
       new_LineOffset[new_row] = new_row * Columns;
       new_LineWraps[new_row] = FALSE;
 
@@ -6318,6 +6339,8 @@ retry:
   }
 }
 
+
+/// @see screenalloc
 void free_screenlines(void)
 {
   int i;

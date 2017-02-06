@@ -109,7 +109,6 @@ bool hasFolding(linenr_T lnum, linenr_T *firstp, linenr_T *lastp)
 /// @param[in] gap array to search for matching folds
 /// @param lnum line whose folds we are looking for
 /// @param[out] out array of folds that contain the line 'lnum'
-/// @return array
 void getFolds(garray_T *gap, linenr_T lnum, garray_T *out) {
   fold_T      *fp;
   int level = 0;
@@ -123,7 +122,7 @@ void getFolds(garray_T *gap, linenr_T lnum, garray_T *out) {
     GA_APPEND(fold_T *, out, fp);
     gap = &fp->fd_nested;
     lnum_rel -= fp->fd_top;
-    ++level;
+    level++;
   }
 }
 
@@ -131,12 +130,15 @@ void getFolds(garray_T *gap, linenr_T lnum, garray_T *out) {
 /// @param[out] firstp first line covered by the fold
 /// @param[out] lastp last line covered by the fold
 /// @param[out] infop where to store fold info, can be null
+/// @param cache when TRUE: use cached values of window */
+/// @param[out] infop  
+/// @return true 
 bool hasFoldingWin(
     win_T *win,
     linenr_T lnum,
     linenr_T *firstp,
     linenr_T *lastp,
-    int cache,                      /* when TRUE: use cached values of window */
+    int cache,
     foldinfo_T *infop
 )
 {
@@ -1096,7 +1098,7 @@ static int foldLevelWin(win_T *wp, linenr_T lnum)
 /*
  * Check if the folds in window "wp" are invalid and update them if needed.
  */
-static void checkupdate(win_T *wp)
+void checkupdate(win_T *wp)
 {
   if (wp->w_foldinvalid) {
     foldUpdate(wp, (linenr_T)1, (linenr_T)MAXLNUM);     /* will update all */
@@ -1477,10 +1479,10 @@ static int getDeepestNestingRecurse(garray_T *gap)
 ///
 /// @return true if fold is closed
 /// @see check_closed
-bool fold_is_closed(const win_T *wp, const fold_T *fold, int foldlevel) {
-    return (fp->fd_flags == FD_CLOSED)
-            || ((fp->fd_flags == FD_LEVEL) && wp->w_p_fdl >= foldlevel);
-}
+// bool fold_is_closed(const win_T *wp, const fold_T *fold, int foldlevel) {
+//     return (fp->fd_flags == FD_CLOSED)
+//             || ((fp->fd_flags == FD_LEVEL) && wp->w_p_fdl >= foldlevel);
+// }
 
 
 /* check_closed() {{{2 */
@@ -1490,8 +1492,8 @@ bool fold_is_closed(const win_T *wp, const fold_T *fold, int foldlevel) {
 /// @param level folding depth
 /// @param[out] maybe_smallp TRUE: outer this had fd_small == MAYBE
 /// @param lnum_off line number offset for fp->fd_top
-static bool
-check_closed (
+bool
+check_closed(
     win_T *win,
     fold_T *fp,
     bool *use_levelp,
@@ -1505,21 +1507,27 @@ check_closed (
   /* Check if this fold is closed.  If the flag is FD_LEVEL this
    * fold and all folds it contains depend on 'foldlevel'. */
   if (*use_levelp || fp->fd_flags == FD_LEVEL) {
-    *use_levelp = TRUE;
-    if (level >= win->w_p_fdl)
-      closed = TRUE;
-  } else if (fp->fd_flags == FD_CLOSED)
-    closed = TRUE;
+    *use_levelp = true;
+    if (level >= win->w_p_fdl) {
+      closed = true;
+    }
+  } else if (fp->fd_flags == FD_CLOSED) {
+    closed = true;
+  }
 
-  /* Small fold isn't closed anyway. */
-  if (fp->fd_small == MAYBE)
-    *maybe_smallp = TRUE;
+  // Small fold isn't closed anyway
+  if (fp->fd_small == MAYBE) {
+    *maybe_smallp = true;
+  }
+
   if (closed) {
-    if (*maybe_smallp)
+    if (*maybe_smallp) {
       fp->fd_small = MAYBE;
+    }
     checkSmall(win, fp, lnum_off);
-    if (fp->fd_small == TRUE)
-      closed = FALSE;
+    if (fp->fd_small == true) {
+      closed = false;
+    }
   }
   return closed;
 }
@@ -1687,13 +1695,14 @@ static void foldDelMarker(linenr_T lnum, char_u *marker, size_t markerlen)
 }
 
 /* get_foldtext() {{{2 */
-/*
- * Return the text for a closed fold at line "lnum", with last line "lnume".
- * When 'foldtext' isn't set puts the result in "buf[51]".  Otherwise the
- * result is in allocated memory.
- */
+/// 
+/// Return the text for a closed fold at line "lnum", with last line "lnume".
+/// When 'foldtext' isn't set puts the result in "buf[51]".  Otherwise the
+/// result is in allocated memory.
+///
+/// @return text for a closed fold
 char_u *get_foldtext(win_T *wp, linenr_T lnum, linenr_T lnume,
-                     foldinfo_T *foldinfo, char_u *buf)
+                     int level, char_u *buf)
   FUNC_ATTR_NONNULL_ARG(1)
 {
   char_u      *text = NULL;
@@ -1714,7 +1723,6 @@ char_u *get_foldtext(win_T *wp, linenr_T lnum, linenr_T lnume,
   if (*wp->w_p_fdt != NUL) {
     char dashes[MAX_LEVEL + 2];
     win_T   *save_curwin;
-    int level;
     char_u  *p;
 
     // Set "v:foldstart" and "v:foldend".
@@ -1723,7 +1731,7 @@ char_u *get_foldtext(win_T *wp, linenr_T lnum, linenr_T lnume,
 
     /* Set "v:folddashes" to a string of "level" dashes. */
     /* Set "v:foldlevel" to "level". */
-    level = foldinfo->fi_level;
+    // level = foldinfo->fi_level;
     if (level > (int)sizeof(dashes) - 1)
       level = (int)sizeof(dashes) - 1;
     memset(dashes, '-', (size_t)level);

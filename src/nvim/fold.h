@@ -39,10 +39,9 @@ typedef struct foldinfo {
 typedef struct {
   linenr_T fd_top;              /* first line of fold; for nested fold
                                  * relative to parent */
-  linenr_T fd_len;              /* number of lines in the fold */
-  /* garray_T fd_parent;           /1* parent fold *1/ */
-  garray_T fd_nested;           /* array of nested folds */
-  char fd_flags;                /* see below */
+  linenr_T fd_len;              //!< number of lines in the fold
+  garray_T fd_nested;           //!< array of nested folds
+  char fd_flags;                //!< @see FD_OPEN, etc...
   char fd_small;                /* TRUE, FALSE or MAYBE: fold smaller than
                                    'foldminlines'; MAYBE applies to nested
                                    folds too */
