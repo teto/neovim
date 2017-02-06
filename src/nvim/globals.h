@@ -96,15 +96,14 @@ typedef enum {
   kTrue  = 1,
 } TriState;
 
-// enum to identify character
-/// definition order matters !
+/// enum to identify character
+/// order matters as it used to prioritize some symbols over others
 typedef enum {
-  /* FM_What, // <TODO supress */
-  FM_OpenWithin, // vertical sep
-  FM_OpenStart,
-  FM_OpenEnd,    /**!< to mark */
-  FM_Closed
-} EFoldMarker;
+  kFoldOpenMid,     //!< vertical sep
+  kFoldOpenStart,   //!< Mark the start of an open fold
+  kFoldOpenLast,    //!< Mark the last line of an open fold
+  kFoldClosed       //!< Show a closed fold
+} kFoldChar;
 
 /* Values for "starting" */
 #define NO_SCREEN       2       /* no screen updating yet */
@@ -1048,10 +1047,10 @@ EXTERN int fill_fold INIT(= '-');
 EXTERN int fill_diff INIT(= '-');
 // MATT ＋  or ▾  ▸ 
 EXTERN int fold_chars[] INIT(= {
-  9474, // FM_OpenWithin
-  9662, // FM_OpenStart
-  11812, // FM_OpenEnd  <FocusLost>2E  ⸤
-  9656  // FM_Closed
+  9474, // kFoldOpenMid
+  9662, // kFoldOpenStart
+  11812, // kFoldOpenLast  <FocusLost>2E  ⸤
+  9656  // kFoldClosed
 });
 
 /* Whether 'keymodel' contains "stopsel" and "startsel". */

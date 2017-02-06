@@ -82,7 +82,6 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <string.h>
-/* #include <math.h> */
 
 #include "nvim/vim.h"
 #include "nvim/ascii.h"
@@ -140,9 +139,6 @@
 static int screen_attr = 0;
 
 static match_T search_hl;       /* used for 'hlsearch' highlight matching */
-
-// TODO I should be able to remove that one !
-static foldinfo_T win_foldinfo; /* info for 'foldcolumn' */
 
 /*
  * Buffer for one screen line (characters and attributes).
@@ -494,7 +490,7 @@ void update_single_line(win_T *wp, linenr_T lnum)
   }
 
   if (lnum >= wp->w_topline && lnum < wp->w_botline
-      && foldedCount(wp, lnum, &win_foldinfo) == 0) {
+      && foldedCount(wp, lnum, NULL) == 0) {
     row = 0;
     for (j = 0; j < wp->w_lines_valid; ++j) {
       if (lnum == wp->w_lines[j].wl_lnum) {
@@ -538,7 +534,6 @@ static void update_finish(void)
 void update_debug_sign(buf_T *buf, linenr_T lnum)
 {
     int  doit = FALSE;
-    win_foldinfo.fi_level = 0;
 
     /* update/delete a specific mark */
     FOR_ALL_WINDOWS_IN_TAB(wp, curtab) {
@@ -648,6 +643,7 @@ static void win_update(win_T *wp)
   linenr_T mod_top = 0;
   linenr_T mod_bot = 0;
   int save_got_int;
+  foldinfo_T win_foldinfo;  //!< holds some info, could be replaced
 
   type = wp->w_redr_type;
 
@@ -1183,7 +1179,6 @@ static void win_update(win_T *wp)
   /* reset got_int, otherwise regexp won't work */
   save_got_int = got_int;
   got_int = 0;
-  win_foldinfo.fi_level = 0;
 
   /*
    * Update all the window rows.
@@ -1388,7 +1383,7 @@ static void win_update(win_T *wp)
        * 'wrap' is on).
        */
       fold_count = foldedCount(wp, lnum, &win_foldinfo);
- 
+
       if (fold_count != 0) {
         // TODO find the matching fold
         fold_line(wp, fold_count, &win_foldinfo, lnum, row);
@@ -1685,9 +1680,10 @@ static int compute_foldcolumn(win_T *wp, int col)
   return fdc;
 }
 
-/*
- * Display one folded line.
- */
+
+/// Display one folded line.
+/// @param lnum Absolute line number
+/// @param row Screen row
 static void fold_line(win_T *wp, long fold_count,
     foldinfo_T *foldinfo, linenr_T lnum, int row)
 {
@@ -1728,50 +1724,8 @@ static void fold_line(win_T *wp, long fold_count,
   // Reduce the width when there is not enough space.
   fdc = compute_foldcolumn(wp, col);
   if (fdc > 0) {
-  /* current_ScreenLine = new_ScreenLines + Rows * Columns; */
-    // TODO take into account n_extra ?
     int n_extra = fill_foldcolumn(buf, wp, TRUE, lnum, FALSE);
-    /* ILOG("n_extra=%d buf=%s", n_extra, buf); */
-    /* ILOG("screen_row=%d col=%d wrapped=%d", row, col, LineWraps[lnum]); */
-    // offset 
-/* screen_Rows */
-    /* ILOG("screen_rows=%d off=%d vs mine=%d ", screen_Rows, off, */ 
-        /* LineOffset[screen_Rows-1], */
-        /* LineOffset[screen_Rows], */
-        /* screen_Rows*screen_Columns */
-        /* ); */
-    /* ILOG("wrapped line screen_row=%d", row */
-    /// YES !! 
-        /* screen_Rows*screen_Columns  == off ! */
-
-  /* off = LineOffset[row] + col; */
-    /* off = LineOffset[row] + col; */
-    /* if (wp->w_p_rl) { */
-    /*   int i; */
-
-    /*   copy_text_attr(off + wp->w_width - n_extra - col, buf, n_extra, */
-    /*       hl_attr(HLF_FC)); */
-    /*   /1* reverse the fold column *1/ */
-    /*   for (i = 0; i < n_extra; ++i) */
-    /*     ScreenLines[off + wp->w_width - i - 1 - col] = buf[i]; */
-    /* } else */
-      /* TODO use screen_puts_len(); */
-      /* ILOG("before ScreenLines=%s", ScreenLines + off); */
-      /* copy_text_attr(off + col, "XXX", 3, hl_attr(HLF_FC)); */
-
-      // en fait faudrait que ca ecrive dans current_ScreenLine qui est
-      // ptet la derniere 
-      // screen_Rows
-
-      // taken from screen_puts_len
-    /* off_from = (unsigned)(current_ScreenLine - ScreenLines); */
-    /* off_to = LineOffset[screen_Rows]; */
-
-      /* screen_puts_len( (char_u*)"XXX", 3, screen_Rows, col, hl_attr(HLF_FC)); */
-      /* screen_puts_len("▸--", 3, screen_Rows, col, hl_attr(HLF_FC)); */
       screen_puts_len(buf, n_extra, screen_Rows, col, hl_attr(HLF_FC));
-      /* ILOG("after ScreenLines=%s", ScreenLines + off); */
-      /* copy_text_attr(off + col, buf, n_extra, hl_attr(HLF_FC)); */
     col += fdc;
   }
 
@@ -2050,7 +2004,6 @@ static void fold_line(win_T *wp, long fold_count,
   }
 }
 
-///
 /// Copy "buf[len]" to ScreenLines["off"] and set attributes to "attr".
 ///
 /// @warn Accepts only monybyte characters
@@ -2066,198 +2019,127 @@ static void copy_text_attr(int off, char_u *buf, int len, int attr)
 }
 
 
-/* int get_foldcolumnwidth(bool closed) { */
-/*   if (closed) */
-/*     return mb_string2cells(fold_chars[FM_Closed]); */
-/*   else */ 
-/*       return MAX(mb_string2cells(fold_chars[FM_OpenStart]), mb_string2cells(fold_chars[FM_OpenWithin])); */
-/* } */
-
-
-///
-///
-/// @return 
-static 
-EFoldMarker
-fill_foldcolumn_single (
-                        fold_T *fp,
-                        linenr_T current_line,
-                        linenr_T *fold_starting_line,
-                        int wrapped,
-                        int respectfoldlevel
-                       )
+/// Returns fold marker to be used depending on context
+/// @param fp check current fold
+/// @param current_line line we are lookint at
+/// @param[in,out] starting line of the fold
+/// @param wrapped true if current screen line is a wrapped one
+/// @param closed true if fold is closed
+/// @return the symbol to be displayed
+static kFoldChar fill_foldcolumn_single(
+    const fold_T *fp,
+    linenr_T current_line,
+    linenr_T *fold_starting_line,
+    int wrapped,
+    bool closed
+)
 {
-  bool closed = (fp->fd_flags == FD_CLOSED) || ((fp->fd_flags == FD_LEVEL) && respectfoldlevel);
   *fold_starting_line += fp->fd_top;
-  ILOG("flags ? %d", fp->fd_flags);
 
-      /* if (use_level || fp->fd_flags == FD_LEVEL) { */
-      /*   use_level = TRUE; */
-      /*   if (level >= curwin->w_p_fdl) */
-      /*     closed = TRUE; */
   if (closed) {
-    return FM_Closed;
-  }
-  else if(current_line == fp->fd_len + *fold_starting_line) {
-    return FM_OpenEnd;
-  }
-  else if((current_line == (*fold_starting_line)) && (wrapped == 0)){
-    return FM_OpenStart;
-  }
-  else {
-
-  /* ILOG("checking current_line=%d vs fold_start=%d (wrapped=%d)", current_line, *fold_starting_line, wrapped); */
-    /* ILOG("wrapped %d", wrapped); */
-    return FM_OpenWithin;
+    return kFoldClosed;
+  } else if (current_line == fp->fd_len - 1 + *fold_starting_line) {
+    return kFoldOpenLast;
+  } else if ((current_line == (*fold_starting_line)) && (wrapped == 0)) {
+    return kFoldOpenStart;
+  } else {
+    return kFoldOpenMid;
   }
 }
 
 
 
-///
-/// Fill the foldcolumn at "p" for window "wp".
+/// Fills the foldcolumn at "p" for window "wp".
 /// Only to be called when 'foldcolumn' > 0.
+///
 /// @param p To fill with characters
 /// @param closed 
-/// @param wrapped 
+/// @param lnum Absolute line number
+/// @param wrapped screen line is a wrapped continuation of absolute line
 /// TODO ideally we should know max number of opened/closed on a line to 
 /// dynamically adapt the size of the foldcolumn
 /// hasFoldingWin  should be improved to count the number of subsequent
 // nested and closed folds and fill foldinfo_T with that information
 // TODO should be able to pass a fold_T ?
-// Assume monocell characters
+/// Assume monocell characters
 static int
-fill_foldcolumn (
+fill_foldcolumn(
     char_u *p,
     win_T *wp,
     int closed, /* TODO remove TRUE=>fold_line or FALSE=>win_line */
     // replace with a wrap ?
-    linenr_T lnum,                  /* current line number */
+    linenr_T lnum,
     int wrapped
 )
 {
   int i = 0;
   int level;
   int cell_counter = 0;
-  fold_T **fp = NULL; // Top level/parent fold
-  int fdc = compute_foldcolumn(wp, 0); /* allowed width in cells */
+  fold_T **fp = NULL;      // Top level/parent fold
+  int fdc = compute_foldcolumn(wp, 0);    //!< allowed width in cells
 
   int char_counter = 0;
-  garray_T results = GA_EMPTY_INIT_VALUE; /* init structures number */
+  garray_T results = GA_EMPTY_INIT_VALUE;
 
-  /* int width = 0; */
-  /* maxcolwidth = MAX(get_closedfoldcolumnwidth(), get_openfoldcolumnwidth()); */
   // Init to all spaces.
-  // TODO be careful pass sizeof(extra) ? = 18
   memset(p, ' ', 18);
-  //!
   // here fp contains the valid top level fold
   // don't need that
-  level = win_foldinfo.fi_level;
-  // TO update folds
-  foldedCount(wp, lnum, &win_foldinfo);
-  /* getDeepestNesting(); */
+  // level = win_foldinfo.fi_level;
   /* checkupdate(wp); */
+  getFolds(&wp->w_folds, lnum, &results);
+  level = results.ga_len;
 
   // if there are folds
   if (level > 0) {
-    /* ILOG("invalid ? %d", wp->w_foldinvalid); */
-
-    getFolds(&wp->w_folds, lnum, &results);
+    kFoldChar symbol;
 
     fp = (fold_T **)results.ga_data;
-    // TODO better init it ?
     linenr_T fold_starting_line = 0;
 
-    // TODO here we should concatenate
-    // i renamed to current_cell
-    // current_cell != level
-    // iterate on levels
-
-    EFoldMarker symbol;
-    /* MAX(level, FDC) */
-    /* i->current_depth */
-
-    ILOG("new_instance ===", fold_starting_line);
-    for (i = 0; i < MIN(level,fdc); i++) {
-      // TODO get matching fold width
-  
+    for (i = 0; i < MIN(level, fdc) ; i++) {
       linenr_T current_line = lnum;
 
-      /* &p[char_counter] */
-      // symbol closed or not ?
-      symbol = fill_foldcolumn_single(fp[i], current_line,
-          &fold_starting_line, wrapped, i >= wp->w_p_fdl );
-      ILOG("fold_start %d symbol=%d current=%d", fold_starting_line, symbol, lnum);
-      /* if last column, look for prioritary signal */
-      if(i == fdc-1)
-      {
-        /* ILOG("LAST column %d", lnum); */
-        /* symbol = FM_OpenWithin; */
-        // todo keep using i 
-
-        // set it to i+1
-        for( i++; i < results.ga_len; i++){
-          EFoldMarker k = fill_foldcolumn_single(fp[i], current_line,
-              &fold_starting_line, wrapped, i >= wp->w_p_fdl );
+      symbol = fill_foldcolumn_single(
+          fp[i], current_line,
+          &fold_starting_line, wrapped, closed);
+      // if last column, look for prioritary signal
+      if (i == fdc-1) {
+        for (i++; i < results.ga_len; i++) {
+          bool closed = fold_is_closed(wp, fp, i);
+          kFoldChar k = fill_foldcolumn_single(
+              fp[i], current_line,
+              &fold_starting_line, wrapped, closed);
           symbol = MAX(symbol, k);
-          /* ILOG("fold_start %d", fold_starting_line); */
-
-          /* ILOG("level=%d computed k=%d (current line=%d?)", i, k, current_line == fold_starting_line); */
         }
       }
       int m = fold_chars[symbol];
-      /* ILOG("p before: %s (i=%d closed=%d) strlen(%d)=%d ", p, i, closed, symbol, mb_char2len(m)); */
-
-      // get char from state/symbol
       int char2cells = mb_char2cells(m);
 
-      /* buf[(*mb_char2bytes)(c, buf)] = NUL; */
-
       mb_char2bytes(m, &p[char_counter]);
-      /* STRNCPY(&p[char_counter], m, STRLEN(m)); // dest/src including terminal byte */
       char_counter += mb_char2len(m);
-
       cell_counter += char2cells;
 
-      /* ILOG("p after: %s (i=%d)", p, i); */
-      if(symbol == FM_Closed) {
+      if (symbol == kFoldClosed) {
         break;
       }
-
-      /* if (first_level + i == level) { */
-      /*   break; */
-      /* } */
     }
-    /* ILOG("char counter=%d cell_counter=%d", char_counter, cell_counter); */
-    /* ILOG("final p%s", p); */
+  }
 
-  } /* end of if(level) */
-
-  /* if (closed) { */
-  /*   //! just last item */
-  /*   // TODO not good !! */
-  /*   p[i >= fdc ? i - 1 : i] = '+'; */
-  /* } */
-
-  // TODO not good 
-  // return STRLEN()
   return MAX(char_counter + (fdc-cell_counter), fdc);
 }
 
-///
 /// Display line "lnum" of window 'wp' on the screen.
 /// Start at row "startrow", stop when "endrow" is reached.
 /// wp->w_virtcol needs to be valid.
 ///
-/// @param wp 
+/// @param wp window pointer
 /// @param lnum line number (absolute)
 /// @param startrow Relative to screen, 0 < win_height
 /// @param endrow see startrow
 /// @param nochange not updating for changed text
 ///
 /// @return the number of last row the line occupies.
-///
 static int
 win_line (
     win_T *wp,
@@ -5501,10 +5383,6 @@ void screen_puts_len(char_u *text, int textlen, int row, int col, int attr)
     return;
   }
   off = LineOffset[row] + col;
-  if(row == screen_Rows) {
-    off = screen_Rows * screen_Columns;
-    /* ILOG("offset to=%d", off); */
-  }
 
   /* When drawing over the right halve of a double-wide char clear out the
    * left halve.  Only needed in a terminal. */

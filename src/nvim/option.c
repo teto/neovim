@@ -3352,7 +3352,6 @@ skip:
 ///
 /// @param varp either &p_lcs or &p_fcs (fillchar)
 /// @return error message, NULL if it's OK.
-///
 static char_u *set_chars_option(char_u **varp)
 {
   int round, i, len, entries;
@@ -3364,15 +3363,15 @@ static char_u *set_chars_option(char_u **varp)
   };
   static struct charstab filltab[] =
   {
-    {&fill_stl,     "stl"},
-    {&fill_stlnc,   "stlnc"},
-    {&fill_vert,    "vert"},
-    {&fill_fold,    "fold"},
-    {&fold_chars[FM_OpenStart],    "foldopen"},
-    {&fold_chars[FM_Closed],    "foldclose"},
-    {&fold_chars[FM_OpenWithin],    "foldsep"},
-    /* {&fold_chars[FM_What],    "foldmisc"}, */
-    {&fill_diff,    "diff"},
+    { &fill_stl,                    "stl" },
+    { &fill_stlnc,                  "stlnc" },
+    { &fill_vert,                   "vert" },
+    { &fill_fold,                   "fold" },
+    { &fold_chars[kFoldOpenStart],    "foldopen" },
+    { &fold_chars[kFoldClosed],       "foldclose" },
+    { &fold_chars[kFoldOpenMid],   "foldsep" },
+    { &fold_chars[kFoldOpenLast],      "foldend" },
+    { &fill_diff,                   "diff" },
   };
   static struct charstab lcstab[] =
   {

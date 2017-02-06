@@ -105,80 +105,50 @@ bool hasFolding(linenr_T lnum, linenr_T *firstp, linenr_T *lastp)
 }
 
 
-/// Need to get folds 
-/// copy of hasFoldingWin
-bool getFolds(
-    /* win_T *win, */
-    garray_T *gap,
-    linenr_T lnum,
-    garray_T *out
-)
-{
+/// Need to get folds
+/// @param[in] gap array to search for matching folds
+/// @param lnum line whose folds we are looking for
+/// @param[out] out array of folds that contain the line 'lnum'
+/// @return array
+void getFolds(garray_T *gap, linenr_T lnum, garray_T *out) {
   fold_T      *fp;
-
-  int level=0;
+  int level = 0;
   linenr_T lnum_rel = lnum;
-    /*
-     * Recursively search for a fold that contains "lnum".
-     */
-    /* gap = &win->w_folds; */
-    for (;; ) {
-      if (!foldFind(gap, lnum_rel, &fp))
-        return false;
-      assert(fp != 0);
-      /* out */
-      GA_APPEND(fold_T *, out, fp);
-      // MATT
-      /* if (level == 0) { */
-      /*   widest_chars = getWidestNestingRecurse(0, fp); */
-      /* } */
-      /* Remember lowest level of fold that starts in "lnum". */
-      /* if (lnum_rel == fp->fd_top && low_level == 0) */
-      /*   low_level = level + 1; */
-
-      /* first += fp->fd_top; */
-      /* last += fp->fd_top; */
-
-      /* is this fold closed? */
-      /* had_folded = check_closed(win, fp, &use_level, level, */
-      /*     &maybe_small, lnum - lnum_rel); */
-      /* if (had_folded) { */
-      /*   /1* Fold closed: Set last and quit loop. *1/ */
-      /*   last += fp->fd_len - 1; */
-      /*   break; */
-      /* } */
-
-      /* Fold found, but it's open: Check nested folds.  Line number is
-       * relative to containing fold. */
-      gap = &fp->fd_nested;
-      lnum_rel -= fp->fd_top;
-      ++level;
+    // Recursively search for a fold that contains "lnum".
+  while (true) {
+    if (!foldFind(gap, lnum_rel, &fp)) {
+      break;
     }
-    return true;
+    assert(fp != 0);
+    GA_APPEND(fold_T *, out, fp);
+    gap = &fp->fd_nested;
+    lnum_rel -= fp->fd_top;
+    ++level;
+  }
 }
 
 /* hasFoldingWin() {{{2 */
 /// @param[out] firstp first line covered by the fold
 /// @param[out] lastp last line covered by the fold
-/// @param[out] infop where to store fold info
+/// @param[out] infop where to store fold info, can be null
 bool hasFoldingWin(
     win_T *win,
     linenr_T lnum,
     linenr_T *firstp,
     linenr_T *lastp,
     int cache,                      /* when TRUE: use cached values of window */
-    foldinfo_T *infop             /* where to store fold info */
+    foldinfo_T *infop
 )
 {
-  int had_folded = FALSE;
+  bool had_folded = false;
   linenr_T first = 0;
   linenr_T last = 0;
   linenr_T lnum_rel = lnum;
   int x;
   fold_T      *fp;
   int level = 0;
-  int use_level = FALSE;
-  int maybe_small = FALSE;
+  bool use_level = false;
+  bool maybe_small = false;
   garray_T    *gap;
   int low_level = 0;
   int widest_chars = 0;
@@ -693,8 +663,8 @@ deleteFold (
   garray_T    *found_ga;
   fold_T      *found_fp = NULL;
   linenr_T found_off = 0;
-  int use_level;
-  int maybe_small = FALSE;
+  bool use_level;
+  bool maybe_small = FALSE;
   int level = 0;
   linenr_T lnum = start;
   linenr_T lnum_off;
@@ -854,8 +824,8 @@ foldMoveTo (
   linenr_T lnum_off;
   linenr_T lnum_found;
   linenr_T lnum;
-  int use_level;
-  int maybe_small;
+  bool use_level;
+  bool maybe_small;
   garray_T    *gap;
   fold_T      *fp;
   int level;
@@ -1476,34 +1446,6 @@ static void foldMarkAdjustRecurse(garray_T *gap, linenr_T line1, linenr_T line2,
   }
 }
 
-///
-/// @return
-///
-/* int getWidestNesting(void) */ 
-/*   // garray_T *gap */
-/* { */
-/*   checkupdate(curwin); */
-/*   return getWidestNestingRecurse(&curwin->w_folds); */
-/* } */
-
-/// Used 
-/* int getWidestNestingRecurse(int accumulated_cellwidth, garray_T *gap) */
-/* { */
-/*   int result; */
-/*   int maxwidth = accumulated_cellwidth; */
-/*   fold_T      *fp; */
-
-/*   fp = (fold_T *)gap->ga_data; */
-/*   for (int i = 0; i < gap->ga_len; ++i) { */
-/*       accumulated_cellwidth += get_foldcolumnwidth(&fp[i].fd_flags == FD_CLOSED); */
-
-/*     result = getWidestNestingRecurse(accumulated_cellwidth, &fp[i].fd_nested); */
-/*     if (result > maxwidth) */
-/*       maxwidth = result; */
-/*   } */
-
-/*   return maxwidth; */
-/* } */
 
 /* getDeepestNesting() {{{2 */
 /*
@@ -1532,21 +1474,33 @@ static int getDeepestNestingRecurse(garray_T *gap)
   return maxlevel;
 }
 
+///
+/// @return true if fold is closed
+/// @see check_closed
+bool fold_is_closed(const win_T *wp, const fold_T *fold, int foldlevel) {
+    return (fp->fd_flags == FD_CLOSED)
+            || ((fp->fd_flags == FD_LEVEL) && wp->w_p_fdl >= foldlevel);
+}
+
+
 /* check_closed() {{{2 */
 ///
 /// Check if a fold is closed and update the info needed to check nested folds.
-/// @param[in,out] use_levelp
-static int
+/// @param[in,out] use_levelp TRUE: outer fold had FD_LEVEL
+/// @param level folding depth
+/// @param[out] maybe_smallp TRUE: outer this had fd_small == MAYBE
+/// @param lnum_off line number offset for fp->fd_top
+static bool
 check_closed (
     win_T *win,
     fold_T *fp,
-    int *use_levelp,            /* TRUE: outer fold had FD_LEVEL */
-    int level,                          /* folding depth */
-    int *maybe_smallp,          /* TRUE: outer this had fd_small == MAYBE */
-    linenr_T lnum_off                  /* line number offset for fp->fd_top */
+    bool *use_levelp,
+    int level,
+    bool *maybe_smallp,
+    linenr_T lnum_off
 )
 {
-  int closed = FALSE;
+  bool closed = false;
 
   /* Check if this fold is closed.  If the flag is FD_LEVEL this
    * fold and all folds it contains depend on 'foldlevel'. */
