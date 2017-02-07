@@ -83,6 +83,15 @@ EXTERN struct nvim_stats_s {
   int64_t redraw;
 } g_stats INIT(= { 0, 0 });
 
+/// enum to identify character
+/// order matters as it used to prioritize some symbols over others
+typedef enum {
+  kFoldOpenMid,     //!< vertical sep
+  kFoldOpenStart,   //!< Mark the start of an open fold
+  kFoldOpenLast,    //!< Mark the last line of an open fold
+  kFoldClosed       //!< Show a closed fold
+} kFoldChar;
+
 /* Values for "starting" */
 #define NO_SCREEN       2       /* no screen updating yet */
 #define NO_BUFFERS      1       /* not all buffers loaded yet */
@@ -907,6 +916,12 @@ EXTERN int fill_fold INIT(= 183);   // ·
 EXTERN int fill_diff INIT(= '-');
 EXTERN int fill_msgsep INIT(= ' ');
 EXTERN int fill_eob INIT(= '~');
+EXTERN int fold_chars[] INIT(= {
+  '|',     // kFoldOpenMid
+  '-',     // kFoldOpenStart
+  '^',     // kFoldOpenLast
+  '+'      // kFoldClosed
+});
 
 /* Whether 'keymodel' contains "stopsel" and "startsel". */
 EXTERN int km_stopsel INIT(= FALSE);
