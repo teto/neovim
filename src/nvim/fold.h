@@ -3,29 +3,13 @@
 
 #include "nvim/pos.h"
 
-/*
- * Info used to pass info about a fold from the fold-detection code to the
- * code that displays the foldcolumn.
- *
- * Example:
- * 123
- * |
- * ||| <- here fi_low_level=2, level=3
- * ||
- * ||
- * 
- * 
- */
-/// TODO REMOVE THAT THING !!
+/// TODO REMOVE ?
 typedef struct foldinfo {
   linenr_T fi_lnum;             /* line number where fold starts */
   int fi_level;                 /* level of the fold; when this is zero the
                                    other fields are invalid */
-  int fi_low_level;             /**!< lowest fold level that starts in the same
-                                   line=> bigger number i.e. fi_low_level >= fi_level */
-  /* int fi_closed_nested_levels;    /1* number from toplevel *1/ */
-  /* int fi_open_nested_levels;    /1* number *1/ */
-  int fi_widest_cell_width;
+  int fi_low_level;             //!< lowest fold level that starts in the same
+                                //!< line=> bigger number i.e. fi_low_level >= fi_level */
 } foldinfo_T;
 
 /* local declarations. {{{1 */
@@ -37,14 +21,14 @@ typedef struct foldinfo {
  * The info stored in both growarrays is the same: An array of fold_T.
  */
 typedef struct {
-  linenr_T fd_top;              /* first line of fold; for nested fold
-                                 * relative to parent */
+  linenr_T fd_top;              //!< first line of fold; for nested fold
+                                //!< relative to parent
   linenr_T fd_len;              //!< number of lines in the fold
   garray_T fd_nested;           //!< array of nested folds
   char fd_flags;                //!< @see FD_OPEN, etc...
-  char fd_small;                /* TRUE, FALSE or MAYBE: fold smaller than
-                                   'foldminlines'; MAYBE applies to nested
-                                   folds too */
+  char fd_small;                //!< TRUE, FALSE or MAYBE: fold smaller than
+                                //!< 'foldminlines'; MAYBE applies to nested
+                                //!< folds too
 } fold_T;
 
 #define FD_OPEN         0       /* fold is open (nested ones can be closed) */

@@ -1079,6 +1079,8 @@ int utf_char2len(int c)
 
 
 /// Convert Unicode character "c" to UTF-8 string in "buf[]".
+///
+/// @param c unicode character to convert
 /// @param[out] buf 
 /// @return the number of bytes.
 /// This does not include composing characters.

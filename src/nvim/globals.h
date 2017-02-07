@@ -1040,17 +1040,12 @@ EXTERN int fill_stl INIT(= ' ');
 EXTERN int fill_stlnc INIT(= ' ');
 EXTERN int fill_vert INIT(= ' ');
 EXTERN int fill_fold INIT(= '-');
-/* EXTERN int fill_foldopen INIT(= '-'); */
-/* EXTERN int fill_foldclose INIT(= '+'); */
-/* EXTERN int fill_foldsep INIT(= '['); */
-/* EXTERN int fill_foldmisc INIT(= '>'); */
 EXTERN int fill_diff INIT(= '-');
-// MATT ＋  or ▾  ▸ 
 EXTERN int fold_chars[] INIT(= {
-  9474,     // kFoldOpenMid
-  9662,     // kFoldOpenStart
-  11812,    // kFoldOpenLast  <FocusLost>2E  ⸤
-  '+'       // 9656  // kFoldClosed
+  '|',     // kFoldOpenMid
+  '-',     // kFoldOpenStart
+  '^',     // kFoldOpenLast
+  '+'      // kFoldClosed
 });
 
 /* Whether 'keymodel' contains "stopsel" and "startsel". */

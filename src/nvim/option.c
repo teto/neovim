@@ -3350,7 +3350,7 @@ skip:
 /// Handle setting 'listchars' or 'fillchars'.
 /// Assume monocell characters
 ///
-/// @param varp either &p_lcs or &p_fcs (fillchar)
+/// @param varp either &p_lcs ('listchars') or &p_fcs ('fillchar')
 /// @return error message, NULL if it's OK.
 static char_u *set_chars_option(char_u **varp)
 {
@@ -3367,10 +3367,10 @@ static char_u *set_chars_option(char_u **varp)
     { &fill_stlnc,                  "stlnc" },
     { &fill_vert,                   "vert" },
     { &fill_fold,                   "fold" },
-    { &fold_chars[kFoldOpenStart],    "foldopen" },
-    { &fold_chars[kFoldClosed],       "foldclose" },
-    { &fold_chars[kFoldOpenMid],   "foldsep" },
-    { &fold_chars[kFoldOpenLast],      "foldend" },
+    { &fold_chars[kFoldOpenStart],  "foldopen" },
+    { &fold_chars[kFoldClosed],     "foldclose" },
+    { &fold_chars[kFoldOpenMid],    "foldsep" },
+    { &fold_chars[kFoldOpenLast],   "foldend" },
     { &fill_diff,                   "diff" },
   };
   static struct charstab lcstab[] =
@@ -3399,10 +3399,9 @@ static char_u *set_chars_option(char_u **varp)
     if (round > 0) {
       /* After checking that the value is valid: set defaults: space for
        * 'fillchars', NUL for 'listchars' */
-      // STRANGE surely a better way can be found
-      /* for (i = 0; i < entries; ++i) */
-      /*   if (tab[i].cp != NULL) */
-      /*     *(tab[i].cp) = (varp == &p_lcs ? NUL : ' '); */
+      for (i = 0; i < entries; ++i)
+        if (tab[i].cp != NULL)
+          *(tab[i].cp) = (varp == &p_lcs ? NUL : ' ');
       if (varp == &p_lcs)
         lcs_tab1 = NUL;
       else

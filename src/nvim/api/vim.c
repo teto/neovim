@@ -34,25 +34,19 @@
 # include "api/vim.c.generated.h"
 #endif
 
-///
-/// Folds are per-window
-// TODO should return a success value ? a fold object ?
 /// @see foldCreate
 void nvim_fold_create(Window window, Integer start, Integer end, Error *err)
 {
   foldCreate(start, end);
 }
 
-///
-///
 /// @see deleteFold
 void nvim_fold_delete(Window window, Integer start, Integer end, Boolean recursive, Error *err)
 {
-  // TODO convert
   deleteFold(
     start,
     end,
-    recursive, // int
+    recursive,
     false);
 }
 

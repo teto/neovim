@@ -104,16 +104,16 @@ bool hasFolding(linenr_T lnum, linenr_T *firstp, linenr_T *lastp)
   return hasFoldingWin(curwin, lnum, firstp, lastp, TRUE, NULL);
 }
 
-
-/// Need to get folds
+/// Return all folds that contain a specific line
+///
 /// @param[in] gap array to search for matching folds
 /// @param lnum line whose folds we are looking for
 /// @param[out] out array of folds that contain the line 'lnum'
 void getFolds(garray_T *gap, linenr_T lnum, garray_T *out) {
-  fold_T      *fp;
+  fold_T *fp;
   int level = 0;
   linenr_T lnum_rel = lnum;
-    // Recursively search for a fold that contains "lnum".
+  // Recursively search for a fold that contains "lnum".
   while (true) {
     if (!foldFind(gap, lnum_rel, &fp)) {
       break;
@@ -130,8 +130,7 @@ void getFolds(garray_T *gap, linenr_T lnum, garray_T *out) {
 /// @param[out] firstp first line covered by the fold
 /// @param[out] lastp last line covered by the fold
 /// @param[out] infop where to store fold info, can be null
-/// @param cache when TRUE: use cached values of window */
-/// @param[out] infop  
+/// @param cache when TRUE: use cached values of window
 /// @return true 
 bool hasFoldingWin(
     win_T *win,
@@ -153,7 +152,6 @@ bool hasFoldingWin(
   bool maybe_small = false;
   garray_T    *gap;
   int low_level = 0;
-  int widest_chars = 0;
 
   checkupdate(win);
   /*
@@ -187,10 +185,6 @@ bool hasFoldingWin(
       if (!foldFind(gap, lnum_rel, &fp))
         break;
 
-      // MATT
-      /* if (level == 0) { */
-      /*   widest_chars = getWidestNestingRecurse(0, fp); */
-      /* } */
       /* Remember lowest level of fold that starts in "lnum". */
       if (lnum_rel == fp->fd_top && low_level == 0)
         low_level = level + 1;
@@ -220,7 +214,6 @@ bool hasFoldingWin(
       infop->fi_level = level;
       infop->fi_lnum = lnum - lnum_rel;
       infop->fi_low_level = low_level == 0 ? level : low_level;
-      infop->fi_widest_cell_width = widest_chars;
     }
     return false;
   }
@@ -236,7 +229,6 @@ bool hasFoldingWin(
     infop->fi_level = level + 1;
     infop->fi_lnum = first;
     infop->fi_low_level = low_level == 0 ? level + 1 : low_level;
-    infop->fi_widest_cell_width = widest_chars;
   }
   return true;
 }
@@ -1038,7 +1030,7 @@ void cloneFoldGrowArray(garray_T *from, garray_T *to)
  * the first fold below it (careful: it can be beyond the end of the array!).
  * Returns FALSE when there is no fold that contains "lnum".
  */
-int foldFind(garray_T *gap, linenr_T lnum, fold_T **fpp)
+static int foldFind(garray_T *gap, linenr_T lnum, fold_T **fpp)
 {
   linenr_T low, high;
   fold_T      *fp;
@@ -1448,7 +1440,6 @@ static void foldMarkAdjustRecurse(garray_T *gap, linenr_T line1, linenr_T line2,
   }
 }
 
-
 /* getDeepestNesting() {{{2 */
 /*
  * Get the lowest 'foldlevel' value that makes the deepest nested fold in the
@@ -1476,18 +1467,9 @@ static int getDeepestNestingRecurse(garray_T *gap)
   return maxlevel;
 }
 
-///
-/// @return true if fold is closed
-/// @see check_closed
-// bool fold_is_closed(const win_T *wp, const fold_T *fold, int foldlevel) {
-//     return (fp->fd_flags == FD_CLOSED)
-//             || ((fp->fd_flags == FD_LEVEL) && wp->w_p_fdl >= foldlevel);
-// }
-
-
 /* check_closed() {{{2 */
-///
 /// Check if a fold is closed and update the info needed to check nested folds.
+///
 /// @param[in,out] use_levelp TRUE: outer fold had FD_LEVEL
 /// @param level folding depth
 /// @param[out] maybe_smallp TRUE: outer this had fd_small == MAYBE
@@ -1695,7 +1677,6 @@ static void foldDelMarker(linenr_T lnum, char_u *marker, size_t markerlen)
 }
 
 /* get_foldtext() {{{2 */
-/// 
 /// Return the text for a closed fold at line "lnum", with last line "lnume".
 /// When 'foldtext' isn't set puts the result in "buf[51]".  Otherwise the
 /// result is in allocated memory.
@@ -1731,9 +1712,9 @@ char_u *get_foldtext(win_T *wp, linenr_T lnum, linenr_T lnume,
 
     /* Set "v:folddashes" to a string of "level" dashes. */
     /* Set "v:foldlevel" to "level". */
-    // level = foldinfo->fi_level;
-    if (level > (int)sizeof(dashes) - 1)
+    if (level > (int)sizeof(dashes) - 1) {
       level = (int)sizeof(dashes) - 1;
+    }
     memset(dashes, '-', (size_t)level);
     dashes[level] = NUL;
     set_vim_var_string(VV_FOLDDASHES, dashes, -1);

@@ -2463,9 +2463,10 @@ A jump table for the options with a short description can be found at |Q_op|.
 	  stlnc:c	' ' or '='	statusline of the non-current windows
 	  vert:c	'|'		vertical separators |:vsplit|
 	  fold:c	'-'		filling 'foldtext'
-	  foldopen:c	'-'		open fold
-	  foldclose:c	'+'		closed fold
-	  foldsep:c	'|'		open fold marker
+	  foldopen:c	'-'		mark the beginning of a fold
+	  foldclose:c	'+'		show a closed fold
+	  foldend:c	'°'		mark the end of a fold
+	  foldsep:c	'|'		open fold middle marker 
 	  diff:c	'-'		deleted lines of the 'diff' option
 
 	Any one that is omitted will fall back to the default.  For "stl" and
