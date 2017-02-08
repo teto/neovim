@@ -3360,18 +3360,19 @@ static char_u *set_chars_option(char_u **varp)
   struct charstab {
     int     *cp;    /**!< char value */
     char    *name;  /**!< char id */
+    int default;    /**!< default character */
   };
   static struct charstab filltab[] =
   {
-    { &fill_stl,                    "stl" },
-    { &fill_stlnc,                  "stlnc" },
-    { &fill_vert,                   "vert" },
-    { &fill_fold,                   "fold" },
-    { &fold_chars[kFoldOpenStart],  "foldopen" },
-    { &fold_chars[kFoldClosed],     "foldclose" },
-    { &fold_chars[kFoldOpenMid],    "foldsep" },
-    { &fold_chars[kFoldOpenLast],   "foldend" },
-    { &fill_diff,                   "diff" },
+    { &fill_stl,                    "stl" , ' '   },
+    { &fill_stlnc,                  "stlnc", ' ' },
+    { &fill_vert,                   "vert", ' ' },
+    { &fill_fold,                   "fold", '-' },
+    { &fold_chars[kFoldOpenStart],  "foldopen", '-' },
+    { &fold_chars[kFoldClosed],     "foldclose", '+' },
+    { &fold_chars[kFoldOpenMid],    "foldsep", '|' },
+    { &fold_chars[kFoldOpenLast],   "foldend", '^' },
+    { &fill_diff,                   "diff", '-' },
   };
   static struct charstab lcstab[] =
   {
@@ -3399,13 +3400,11 @@ static char_u *set_chars_option(char_u **varp)
     if (round > 0) {
       /* After checking that the value is valid: set defaults: space for
        * 'fillchars', NUL for 'listchars' */
-      for (i = 0; i < entries; ++i)
-        if (tab[i].cp != NULL)
-          *(tab[i].cp) = (varp == &p_lcs ? NUL : ' ');
-      if (varp == &p_lcs)
-        lcs_tab1 = NUL;
-      else
-        fill_diff = '-';
+      for (i = 0; i < entries; ++i) {
+        if (tab[i].cp != NULL) {
+          *(tab[i].cp) = (varp == &p_lcs ? NUL : tab[i].default);
+        }
+      }
     }
     p = *varp;
     while (*p) {
