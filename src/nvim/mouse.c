@@ -29,33 +29,36 @@
 static linenr_T orig_topline = 0;
 static int orig_topfill = 0;
 
-// Move the cursor to the specified row and column on the screen.
-// Change current window if necessary. Returns an integer with the
-// CURSOR_MOVED bit set if the cursor has moved or unset otherwise.
-//
-// The MOUSE_FOLD_CLOSE bit is set when clicked on the '-' in a fold column.
-// The MOUSE_FOLD_OPEN bit is set when clicked on the '+' in a fold column.
-//
-// If flags has MOUSE_FOCUS, then the current window will not be changed, and
-// if the mouse is outside the window then the text will scroll, or if the
-// mouse was previously on a status line, then the status line may be dragged.
-//
-// If flags has MOUSE_MAY_VIS, then VIsual mode will be started before the
-// cursor is moved unless the cursor was on a status line.
-// This function returns one of IN_UNKNOWN, IN_BUFFER, IN_STATUS_LINE or
-// IN_SEP_LINE depending on where the cursor was clicked.
-//
-// If flags has MOUSE_MAY_STOP_VIS, then Visual mode will be stopped, unless
-// the mouse is on the status line of the same window.
-//
-// If flags has MOUSE_DID_MOVE, nothing is done if the mouse didn't move since
-// the last call.
-//
-// If flags has MOUSE_SETPOS, nothing is done, only the current position is
-// remembered.
+/// Move the cursor to the specified row and column on the screen.
+/// Change current window if necessary. Returns an integer with the
+/// CURSOR_MOVED bit set if the cursor has moved or unset otherwise.
+///
+/// The MOUSE_FOLD_CLOSE bit is set when clicked on the '-' in a fold column.
+/// The MOUSE_FOLD_OPEN bit is set when clicked on the '+' in a fold column.
+/// @param which_button MOUSE_LEFT, MOUSE_RIGHT, MOUSE_MIDDLE
+/// @param inclusive used for inclusive operator, can be NULL
+/// @param flags teswt
+///
+/// If @p flags has MOUSE_FOCUS, then the current window will not be changed, and
+/// if the mouse is outside the window then the text will scroll, or if the
+/// mouse was previously on a status line, then the status line may be dragged.
+///
+/// If @p flags has MOUSE_MAY_VIS, then VIsual mode will be started before the
+/// cursor is moved unless the cursor was on a status line.
+/// This function returns one of IN_UNKNOWN, IN_BUFFER, IN_STATUS_LINE or
+/// IN_SEP_LINE depending on where the cursor was clicked.
+///
+/// If flags has MOUSE_MAY_STOP_VIS, then Visual mode will be stopped, unless
+/// the mouse is on the status line of the same window.
+///
+/// If flags has MOUSE_DID_MOVE, nothing is done if the mouse didn't move since
+/// the last call.
+///
+/// If flags has MOUSE_SETPOS, nothing is done, only the current position is
+/// remembered.
 int jump_to_mouse(int flags,
-                  bool *inclusive,  // used for inclusive operator, can be NULL
-                  int which_button)  // MOUSE_LEFT, MOUSE_RIGHT, MOUSE_MIDDLE
+                  bool *inclusive,
+                  int which_button)
 {
   static int on_status_line = 0;        // #lines below bottom of window
   static int on_sep_line = 0;           // on separator right of window
@@ -111,8 +114,18 @@ retnomove:
   // fold column. NB: only works for ASCII chars!
   if (row >= 0 && row < Rows && col >= 0 && col <= Columns
       && ScreenLines != NULL) {
-    mouse_char = ScreenLines[LineOffset[row] + (unsigned)col][0];
-  } else {
+    /* TODO check wit master */
+    /* mouse_char = ScreenLines[LineOffset[row] + (unsigned)col][0]; */
+    // TODO getchar at this place
+    char bytes[6];
+    int attr;
+    screen_getbytes(row, col, (char_u *)&bytes, &attr);
+    //   to use with utf_ptr2char
+    // mouse_char = ScreenLines[LineOffset[row] + (unsigned)col];
+    mouse_char = utf_ptr2char((const char_u *)&bytes);
+    ILOG("converted to %d", mouse_char);
+  }
+  else {
     mouse_char = ' ';
   }
 
@@ -348,8 +361,11 @@ retnomove:
     count |= CURSOR_MOVED;              // Cursor has moved
   }
 
-  if (mouse_char == '+') {
+  // if (mouse_char == '+') {
+  ILOG("comparing with %d", fold_chars[kFoldClosed]);
+  if (mouse_char == fold_chars[kFoldClosed]) {
     count |= MOUSE_FOLD_OPEN;
+  // } else if (mouse_char != ' ') {
   } else if (mouse_char != ' ') {
     count |= MOUSE_FOLD_CLOSE;
   }

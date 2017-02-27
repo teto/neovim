@@ -5309,10 +5309,11 @@ void screen_putchar(int c, int row, int col, int attr)
   screen_puts(buf, row, col, attr);
 }
 
-/*
- * Get a single character directly from ScreenLines into "bytes[]".
- * Also return its attribute in *attrp;
- */
+
+/// Get a single character directly from ScreenLines into "bytes[]".
+/// Also return its attribute in *attrp;
+/// @param[out] bytes
+/// @param[out] attrp must be set
 void screen_getbytes(int row, int col, char_u *bytes, int *attrp)
 {
   unsigned off;
