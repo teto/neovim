@@ -114,7 +114,7 @@ bool hasFolding(linenr_T lnum, linenr_T *firstp, linenr_T *lastp)
 /// @param[in] gap array to search for matching folds
 /// @param lnum line whose folds we are looking for
 /// @param[out] out array of folds that contain the line 'lnum'
-void getFolds(garray_T *gap, linenr_T lnum, garray_T *out) 
+void getFolds(garray_T *gap, linenr_T lnum, garray_T *out)
 {
   fold_T *fp;
   int level = 0;
@@ -525,11 +525,8 @@ int foldManualAllowed(int create)
   return FALSE;
 }
 
-/* foldCreate() {{{2 */
-/*
- * Create a fold from line "start" to line "end" (inclusive) in the current
- * window.
- */
+// foldCreate() {{{2
+/// @see nvim_fold_create
 void foldCreate(linenr_T start, linenr_T end)
 {
   fold_T      *fp;
@@ -641,17 +638,17 @@ void foldCreate(linenr_T start, linenr_T end)
 }
 
 
-/* deleteFold() {{{2 */
-/*
- * Delete a fold at line "start" in the current window.
- * When "end" is not 0, delete all folds from "start" to "end".
- * When "recursive" is TRUE delete recursively.
- */
+// deleteFold() {{{2
+/// Delete a fold at line "start" in the current window.
+/// When "end" is not 0, delete all folds from "start" to "end".
+/// When "recursive" is TRUE delete recursively.
+/// @param had_visual TRUE when Visual selection used
+/// @see nvim_fold_delete
 void deleteFold(
     const linenr_T start,
     const linenr_T end,
     const int recursive,
-    const bool had_visual         // true when Visual selection used
+    const bool had_visual
 )
 {
   fold_T      *fp;
@@ -1470,7 +1467,7 @@ static int getDeepestNestingRecurse(garray_T *gap)
   return maxlevel;
 }
 
-/* check_closed() {{{2 */
+// check_closed() {{{2
 /// Check if a fold is closed and update the info needed to check nested folds.
 ///
 /// @param[in,out] use_levelp true: outer fold had FD_LEVEL
@@ -1716,8 +1713,8 @@ char_u *get_foldtext(win_T *wp, linenr_T lnum, linenr_T lnume,
     set_vim_var_nr(VV_FOLDSTART, (varnumber_T) lnum);
     set_vim_var_nr(VV_FOLDEND, (varnumber_T) lnume);
 
-    /* Set "v:folddashes" to a string of "level" dashes. */
-    /* Set "v:foldlevel" to "level". */
+    // Set "v:folddashes" to a string of "level" dashes.
+    // Set "v:foldlevel" to "level".
     if (level > (int)sizeof(dashes) - 1) {
       level = (int)sizeof(dashes) - 1;
     }
@@ -1866,6 +1863,7 @@ void foldtext_cleanup(char_u *str)
 /*
  * Update the folding for window "wp", at least from lines "top" to "bot".
  * Return TRUE if any folds did change.
+ * Indent Expr Marker Syntax (IEMS)
  */
 static void foldUpdateIEMS(win_T *const wp, linenr_T top, linenr_T bot)
 {

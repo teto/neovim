@@ -4173,6 +4173,10 @@ static char *set_num_option(int opt_idx, char_u *varp, long value,
   } else if (pp == &curwin->w_p_fdc || pp == &curwin->w_allbuf_opt.wo_fdc) {
     if (value < 0) {
       errmsg = e_positive;
+  } else if (pp == &curwin->w_p_fdc
+             || pp == (long *)GLOBAL_WO(&curwin->w_p_fdc)) {
+    if (value < -1) {
+      errmsg = e_invarg;
     } else if (value > 12) {
       errmsg = e_invarg;
     }
