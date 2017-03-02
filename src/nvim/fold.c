@@ -527,7 +527,7 @@ int foldManualAllowed(int create)
 
 // foldCreate() {{{2
 /// @see nvim_fold_create
-void foldCreate(linenr_T start, linenr_T end)
+void foldCreate(win_T *wp, linenr_T start, linenr_T end)
 {
   fold_T      *fp;
   garray_T    *gap;
@@ -554,10 +554,10 @@ void foldCreate(linenr_T start, linenr_T end)
     return;
   }
 
-  checkupdate(curwin);
+  checkupdate(wp);
 
   /* Find the place to insert the new fold. */
-  gap = &curwin->w_folds;
+  gap = &wp->w_folds;
   for (;; ) {
     if (!foldFind(gap, start_rel, &fp))
       break;
@@ -568,7 +568,7 @@ void foldCreate(linenr_T start, linenr_T end)
       end_rel -= fp->fd_top;
       if (use_level || fp->fd_flags == FD_LEVEL) {
         use_level = TRUE;
-        if (level >= curwin->w_p_fdl)
+        if (level >= wp->w_p_fdl)
           closed = TRUE;
       } else if (fp->fd_flags == FD_CLOSED)
         closed = TRUE;
@@ -1094,11 +1094,11 @@ static void checkupdate(win_T *wp)
      // will update all
     foldUpdate(wp, (linenr_T)1, (linenr_T)MAXLNUM);
 
-    int res = getDeepestNestingRecurse(&wp->w_folds);
-    if (res != wp->w_fdcwidth) {
-      fold_changed = true;
-      wp->w_fdcwidth = res;
-    }
+    /* int res = getDeepestNestingRecurse(&wp->w_folds); */
+    /* if (res != wp->w_fdcwidth) { */
+    /*   fold_changed = true; */
+    /*   wp->w_fdcwidth = res; */
+    /* } */
     wp->w_foldinvalid = false;
   }
 }
