@@ -114,7 +114,7 @@ bool hasFolding(linenr_T lnum, linenr_T *firstp, linenr_T *lastp)
 /// @param[in] gap array to search for matching folds
 /// @param lnum line whose folds we are looking for
 /// @param[out] out array of folds that contain the line 'lnum'
-void getFolds(garray_T *gap, linenr_T lnum, garray_T *out)
+void getFolds(const garray_T *gap, linenr_T lnum, garray_T *out)
 {
   fold_T *fp;
   int level = 0;
@@ -1028,7 +1028,7 @@ void cloneFoldGrowArray(garray_T *from, garray_T *to)
  * the first fold below it (careful: it can be beyond the end of the array!).
  * Returns FALSE when there is no fold that contains "lnum".
  */
-static int foldFind(garray_T *gap, linenr_T lnum, fold_T **fpp)
+static int foldFind(const garray_T *gap, linenr_T lnum, fold_T **fpp)
 {
   linenr_T low, high;
   fold_T      *fp;
@@ -1091,7 +1091,14 @@ static int foldLevelWin(win_T *wp, linenr_T lnum)
 static void checkupdate(win_T *wp)
 {
   if (wp->w_foldinvalid) {
-    foldUpdate(wp, (linenr_T)1, (linenr_T)MAXLNUM);     /* will update all */
+     // will update all
+    foldUpdate(wp, (linenr_T)1, (linenr_T)MAXLNUM);
+
+    int res = getDeepestNestingRecurse(&wp->w_folds);
+    if (res != wp->w_fdcwidth) {
+      fold_changed = true;
+      wp->w_fdcwidth = res;
+    }
     wp->w_foldinvalid = false;
   }
 }
@@ -1512,10 +1519,9 @@ static bool check_closed(
   return closed;
 }
 
-/* checkSmall() {{{2 */
-/*
- * Update fd_small field of fold "fp".
- */
+// checkSmall() {{{2
+/// Update fd_small field of fold "fp".
+/// @param lnum_off offset for fp->fd_top
 static void
 checkSmall(
     win_T *const wp,
@@ -1932,10 +1938,11 @@ static void foldUpdateIEMS(win_T *const wp, linenr_T top, linenr_T bot)
       /* If a fold started here, we already had the level, if it stops
        * here, we need to use lvl_next.  Could also start and end a fold
        * in the same line. */
-      if (fline.lvl > level)
+      if (fline.lvl > level) {
         fline.lvl = level - (fline.lvl - fline.lvl_next);
-      else
+      } else {
         fline.lvl = fline.lvl_next;
+      }
     }
     fline.lnum = top;
     getlevel(&fline);
@@ -2053,9 +2060,10 @@ static void foldUpdateIEMS(win_T *const wp, linenr_T top, linenr_T bot)
   /* There can't be any folds from start until end now. */
   foldRemove(&wp->w_folds, start, end);
 
-  /* If some fold changed, need to redraw and position cursor. */
-  if (fold_changed && wp->w_p_fen)
+  // If some fold changed, need to redraw and position cursor
+  if (fold_changed && wp->w_p_fen) {
     changed_window_setting_win(wp);
+  }
 
   /* If we updated folds past "bot", need to redraw more lines.  Don't do
    * this in other situations, the changed lines will be redrawn anyway and
