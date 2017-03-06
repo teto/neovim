@@ -351,7 +351,9 @@ void update_screen(int type)
   //     && curwin->w_nrwidth != ((curwin->w_p_nu || curwin->w_p_rnu)
   //                              ? number_width(curwin) : 0))
   int ret = compute_number_width(curwin);
-  if (curwin->w_redr_type < NOT_VALID
+  if (
+      //curwin->w_redr_type < NOT_VALID
+      true
       && (curwin->w_p_nu || curwin->w_p_rnu)
       ?? TODO revisit with number_width(curwin) : 0))
       && curwin->w_nrwidth_width != ret) {
@@ -361,7 +363,9 @@ void update_screen(int type)
 
   // fold
   int nesting = getDeepestNesting();
-  if (curwin->w_redr_type < NOT_VALID
+  if (
+      true
+      //curwin->w_redr_type < NOT_VALID
       && curwin->w_fdcwidth != nesting) {
     curwin->w_fdcwidth = nesting;
     curwin->w_redr_type = NOT_VALID;
@@ -1743,6 +1747,7 @@ int compute_foldcolumn(const win_T *wp, int col)
   if (fdc > wwidth - (col + wmw)) {
     fdc = wwidth - (col + wmw);
   }
+  ILOG("Compute fdc=", fdc );
   return fdc;
 }
 
@@ -2876,10 +2881,10 @@ win_line (
             long num;
             char *fmt = "%*ld ";
 
-            if (wp->w_p_nu && !wp->w_p_rnu)
+            if (wp->w_p_nu && !wp->w_p_rnu) {
               /* 'number' + 'norelativenumber' */
               num = (long)lnum;
-            else {
+            } else {
               /* 'relativenumber', don't use negative numbers */
               num = labs((long)get_cursor_rel_lnum(wp, lnum));
               if (num == 0 && wp->w_p_nu && wp->w_p_rnu) {
@@ -2898,8 +2903,9 @@ win_line (
               rl_mirror(extra);
             p_extra = extra;
             c_extra = NUL;
-          } else
+          } else {
             c_extra = ' ';
+          }
           n_extra = number_width(wp) + 1;
           char_attr = win_hl_attr(wp, HLF_N);
           // When 'cursorline' is set highlight the line number of
