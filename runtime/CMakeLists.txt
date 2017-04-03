@@ -4,8 +4,12 @@ set(GENERATED_SYN_VIM ${GENERATED_RUNTIME_DIR}/syntax/vim/generated.vim)
 set(GENERATED_HELP_TAGS ${GENERATED_RUNTIME_DIR}/doc/tags)
 set(GENERATED_PACKAGE_DIR ${GENERATED_RUNTIME_DIR}/pack/dist/opt)
 set(FUNCS_DATA ${PROJECT_BINARY_DIR}/funcs_data.mpack)
+set(GENERATED_OPTIONS_MPACK ${PROJECT_BINARY_DIR}/runtime/data/options.mpack)
+set(OPTIONS_GENERATOR ${PROJECT_SOURCE_DIR}/src/nvim/generators/gen_options.lua)
+set(OPTIONS_LIST_FILE ${PROJECT_SOURCE_DIR}/src/nvim/options.lua)
 
 file(MAKE_DIRECTORY ${GENERATED_RUNTIME_DIR})
+file(MAKE_DIRECTORY ${GENERATED_RUNTIME_DIR}/data)
 file(MAKE_DIRECTORY ${GENERATED_RUNTIME_DIR}/syntax)
 file(MAKE_DIRECTORY ${GENERATED_RUNTIME_DIR}/syntax/vim)
 
@@ -19,6 +23,14 @@ add_custom_command(OUTPUT ${GENERATED_SYN_VIM}
     ${PROJECT_SOURCE_DIR}/src/nvim/options.lua
     ${PROJECT_SOURCE_DIR}/src/nvim/eval.c
     ${FUNCS_DATA}
+)
+
+# generates options.mpack
+add_custom_command(OUTPUT ${GENERATED_OPTIONS_MPACK}
+  COMMAND ${LUA_PRG} ${OPTIONS_GENERATOR} mpack
+          ${PROJECT_SOURCE_DIR}/src/nvim ${GENERATED_OPTIONS_MPACK}
+  DEPENDS
+          ${OPTIONS_GENERATOR} ${OPTIONS_LIST_FILE}
 )
 
 file(GLOB PACKAGES ${PROJECT_SOURCE_DIR}/runtime/pack/dist/opt/*)
@@ -88,6 +100,7 @@ add_custom_target(
     ${GENERATED_SYN_VIM}
     ${GENERATED_HELP_TAGS}
     ${GENERATED_PACKAGE_TAGS}
+    ${GENERATED_OPTIONS_MPACK}
 )
 
 # CMake is painful here.  It will create the destination using the user's
@@ -113,6 +126,10 @@ if(NOT APPLE)
     FILES ${CMAKE_CURRENT_SOURCE_DIR}/nvim.png
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/pixmaps)
 endif()
+
+install_helper(
+  FILES ${GENERATED_OPTIONS_MPACK}
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/nvim/runtime/data)
 
 file(GLOB_RECURSE RUNTIME_PROGRAMS
   RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}

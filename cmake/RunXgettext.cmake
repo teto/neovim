@@ -5,8 +5,8 @@ list(SORT SOURCES)
 
 execute_process(
   COMMAND ${XGETTEXT_PRG} -o ${POT_FILE} --default-domain=nvim
-      --add-comments --keyword=_ --keyword=N_ -D ${SEARCH_DIR}
-      ${SOURCES}
+      --add-comments --keyword=_ --keyword=N_
+      --from-code=utf-8 -D ${SEARCH_DIR} ${SOURCES}
   ERROR_VARIABLE err
   RESULT_VARIABLE res)
 if(NOT res EQUAL 0)

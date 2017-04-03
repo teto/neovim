@@ -1,22 +1,15 @@
-if arg[1] == '--help' then
-  print('Usage: genoptions.lua src/nvim options_file')
+local printhelp = function ()
+  print('Usage: genoptions.lua {header|mpack} src/nvim options_file')
+  print('       header to generate options.generated.h')
+  print('       mpack to generate runtime/data/options.mpack')
   os.exit(0)
 end
 
-local nvimsrcdir = arg[1]
-local options_file = arg[2]
+local action = arg[1]
+local nvimsrcdir = arg[2]
+local options_file = arg[3]
 
 package.path = nvimsrcdir .. '/?.lua;' .. package.path
-
-local opt_fd = io.open(options_file, 'w')
-
-local w = function(s)
-  if s:match('^    %.') then
-    opt_fd:write(s .. ',\n')
-  else
-    opt_fd:write(s .. '\n')
-  end
-end
 
 local options = require('options')
 
@@ -46,7 +39,39 @@ local list_flags={
   flagscomma='P_COMMA|P_FLAGLIST',
 }
 
-local get_flags = function(o)
+if action == "mpack" then
+
+  local mpack = require('mpack')
+  local tablex = require('pl.tablex')
+
+  local drop_useless = function (entry)
+    -- drop fields that bother libmpack
+    -- see https://github.com/libmpack/libmpack/issues/30
+    entry.defaults = nil
+    entry.redraw = nil
+    entry.nomkrc = nil
+
+    return entry
+  end
+
+  local clean_opts = tablex.map(drop_useless, options.options)
+
+  local mpack_output = io.open(options_file, 'wb')
+  mpack_output:write(mpack.pack(clean_opts))
+  mpack_output:close()
+
+elseif action == "header" then
+  local opt_fd = io.open(options_file, 'w')
+
+  local w = function(s)
+    if s:match('^    %.') then
+      opt_fd:write(s .. ',\n')
+    else
+      opt_fd:write(s .. '\n')
+    end
+  end
+
+  local get_flags = function(o)
   local ret = {type_flags[o.type]}
   local add_flag = function(f)
     ret[1] = ret[1] .. '|' .. f
@@ -182,15 +207,20 @@ local dump_option = function(i, o)
   w('  },')
 end
 
-w('static vimoption_T options[] = {')
-for i, o in ipairs(options.options) do
-  dump_option(i, o)
-end
-w('  [' .. ('%u'):format(#options.options) .. ']={.fullname=NULL}')
-w('};')
-w('')
+	w('static vimoption_T options[] = {')
+	for i, o in ipairs(options.options) do
+	dump_option(i, o)
+	end
+	w('  [' .. ('%u'):format(#options.options) .. ']={.fullname=NULL}')
+	w('};')
+	w('')
 
-for k, v in pairs(defines) do
-  w('#define ' .. k .. ' ' .. v)
+	for k, v in pairs(defines) do
+	w('#define ' .. k .. ' ' .. v)
+	end
+	opt_fd:close()
+else
+	print("Wrong action")
+	printhelp()
 end
-opt_fd:close()
+
