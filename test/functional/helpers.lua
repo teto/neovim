@@ -60,6 +60,9 @@ elseif os.getenv('GDB') then
     gdbserver_port = os.getenv('GDBSERVER_PORT')
   end
   prepend_argv = {'gdbserver', 'localhost:'..gdbserver_port}
+  print ([[Starting with gdb, run in another terminal:
+  $ gdb build/bin/nvim
+  (gdb) target remote localhost:]]..gdbserver_port)
 end
 
 if prepend_argv then

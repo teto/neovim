@@ -11643,6 +11643,7 @@ static void f_jobstart(typval_T *argvars, typval_T *rettv, FunPtr fptr)
 
   bool executable = true;
   char **argv = tv_to_argv(&argvars[0], NULL, &executable);
+  char **env = NULL;
   if (!argv) {
     rettv->vval.v_number = executable ? 0 : -1;
     return;  // Did error message in tv_to_argv.
@@ -11686,6 +11687,53 @@ static void f_jobstart(typval_T *argvars, typval_T *rettv, FunPtr fptr)
         return;
       }
     }
+    dictitem_T *item;
+    // or new_env
+    item = tv_dict_find(job_opts, S_LEN("env"));
+    ILOG("Just looked into job_opts");
+    if (item) {
+      ILOG("env passed correctly");
+      if (item->di_tv.v_type != VAR_DICT) {
+        EMSG2(_(e_invarg2), "Expected a dictionary for 'env'");
+        return;
+      }
+      // TODO add the following in tv_to_argv  ?
+      //tv_to_argv(&argvars[0], NULL, &executable);
+      size_t count = 0;
+      TV_DICT_ITER(item->di_tv.vval.v_dict, var, {
+          const char *str = tv_get_string(&var->di_tv);
+          count++;
+          if (str) {
+            ILOG("key %s", str);
+            if (env == NULL) {
+              env = xmalloc((size_t)1);
+            } else {
+              env = xrealloc(env, count);
+            }
+            // env[count-1] = xmalloc( (size_t)(STRLEN(di->di_key) + 1 + (STRLEN(str))  ) * sizeof(char_u));
+            // int res = sprintf(env[count-1], "%s=%s", var->di_key, str));
+            // TODO need to escape the var 
+            // use shell_xescape_xquote ?
+            env[count-1] = (char *)concat_str(var->di_key, concat_str((char_u *)"=", (char_u*)(str)));
+            ILOG("generated string: %s", env[count - 1]);
+
+          }
+        });
+
+        // must be null terminated
+      env = xrealloc(env, count + 1);
+      env[count] = NULL;
+    }
+    ILOG("finished parsing env");
+
+    // if (v != NULL && v->di_tv.v_type == VAR_FUNC) {
+    //   if (v->di_tv.vval.v_string == NULL) {  // just in case
+    //     *lenp = 0;
+    //     return (char_u *)"";
+    //   }
+    //   *lenp = (int)STRLEN(v->di_tv.vval.v_string);
+    //   return v->di_tv.vval.v_string;
+    // }
 
     if (!common_job_callbacks(job_opts, &on_stdout, &on_stderr, &on_exit)) {
       shell_free_argv(argv);
@@ -11693,7 +11741,7 @@ static void f_jobstart(typval_T *argvars, typval_T *rettv, FunPtr fptr)
     }
   }
 
-  TerminalJobData *data = common_job_init(argv, on_stdout, on_stderr, on_exit,
+  TerminalJobData *data = common_job_init(argv, env, on_stdout, on_stderr, on_exit,
                                           pty, rpc, detach, cwd);
   Process *proc = (Process *)&data->proc;
 
@@ -13950,7 +13998,7 @@ static void f_rpcstart(typval_T *argvars, typval_T *rettv, FunPtr fptr)
   // The last item of argv must be NULL
   argv[i] = NULL;
 
-  TerminalJobData *data = common_job_init(argv, CALLBACK_NONE, CALLBACK_NONE,
+  TerminalJobData *data = common_job_init(argv, NULL, CALLBACK_NONE, CALLBACK_NONE,
                                           CALLBACK_NONE, false, true, false,
                                           NULL);
   common_job_start(data, rettv);
@@ -16688,7 +16736,7 @@ static void f_termopen(typval_T *argvars, typval_T *rettv, FunPtr fptr)
     }
   }
 
-  TerminalJobData *data = common_job_init(argv, on_stdout, on_stderr, on_exit,
+  TerminalJobData *data = common_job_init(argv, NULL, on_stdout, on_stderr, on_exit,
                                           true, false, false, cwd);
   data->proc.pty.width = curwin->w_width;
   data->proc.pty.height = curwin->w_height;
@@ -22396,6 +22444,7 @@ char_u *do_string_sub(char_u *str, char_u *pat, char_u *sub,
 }
 
 static inline TerminalJobData *common_job_init(char **argv,
+                                               char **env,
                                                Callback on_stdout,
                                                Callback on_stderr,
                                                Callback on_exit,
@@ -22418,6 +22467,11 @@ static inline TerminalJobData *common_job_init(char **argv,
   }
   Process *proc = (Process *)&data->proc;
   proc->argv = argv;
+  proc->env  = env;
+  // if (env) {
+  //   // should be null terminated
+  //   xrealloc(y_ptr->y_array, (y_ptr->y_size + newlines) * sizeof(char_u *));
+  // }
   proc->in = &data->in;
   proc->out = &data->out;
   if (!pty) {
