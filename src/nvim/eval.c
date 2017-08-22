@@ -104,6 +104,7 @@
 #include "nvim/eval/executor.h"
 #include "nvim/eval/gc.h"
 #include "nvim/macros.h"
+#include "nvim/os/os.h"
 
 // TODO(ZyX-I): Remove DICT_MAXNEST, make users be non-recursive instead
 
@@ -11661,6 +11662,7 @@ static void f_jobstart(typval_T *argvars, typval_T *rettv, FunPtr fptr)
   bool detach = false;
   bool rpc = false;
   bool pty = false;
+  bool reset_env = false;
   Callback on_stdout = CALLBACK_NONE;
   Callback on_stderr = CALLBACK_NONE;
   Callback on_exit = CALLBACK_NONE;
@@ -11671,6 +11673,8 @@ static void f_jobstart(typval_T *argvars, typval_T *rettv, FunPtr fptr)
     detach = tv_dict_get_number(job_opts, "detach") != 0;
     rpc = tv_dict_get_number(job_opts, "rpc") != 0;
     pty = tv_dict_get_number(job_opts, "pty") != 0;
+    reset_env = tv_dict_get_number(job_opts, "reset_env") != 0;
+
     if (pty && rpc) {
       EMSG2(_(e_invarg2), "job cannot have both 'pty' and 'rpc' options set");
       shell_free_argv(argv);
@@ -11690,50 +11694,59 @@ static void f_jobstart(typval_T *argvars, typval_T *rettv, FunPtr fptr)
     dictitem_T *item;
     // or new_env
     item = tv_dict_find(job_opts, S_LEN("env"));
-    ILOG("Just looked into job_opts");
     if (item) {
-      ILOG("env passed correctly");
+      size_t env_size = 0; // len ?
+      size_t i = 0;
+      // size_t orig_env_size = 0;
       if (item->di_tv.v_type != VAR_DICT) {
         EMSG2(_(e_invarg2), "Expected a dictionary for 'env'");
         return;
       }
+
+      // number of items in dict
+      env_size += (size_t)tv_dict_len(item->di_tv.vval.v_dict);
+      ILOG("%d passed env variables", env_size);
+
+      if (!reset_env) {
+        char **environ = os_getfullenv();
+        size_t current_env_size = 0; // = strlen(environ); // strlen excludes null byte
+        for (env = environ; *env; env++) {
+          current_env_size++;
+        }
+        ILOG("current env_len=%d", current_env_size);
+        env_size += current_env_size;
+        env = xmalloc( (env_size) * sizeof(char));
+        for (;i < current_env_size; i++) {
+            env[i] = xstrdup(environ[i]);
+            ILOG("from env: %s (id=%d)", env[i], i);
+        }
+      } else {
+        // + 1 for last null entry
+        env = xmalloc( (env_size + 1) * sizeof(char));
+      }
+      assert(env);  // env should be allocated here
+      ILOG("total env_len=%d", env_size);
+
       // TODO add the following in tv_to_argv  ?
-      //tv_to_argv(&argvars[0], NULL, &executable);
-      size_t count = 0;
       TV_DICT_ITER(item->di_tv.vval.v_dict, var, {
+          // tv_get_string => single buffer vs tv_get_string_buf
           const char *str = tv_get_string(&var->di_tv);
-          count++;
           if (str) {
-            ILOG("key %s", str);
-            if (env == NULL) {
-              env = xmalloc((size_t)1);
-            } else {
-              env = xrealloc(env, count);
-            }
-            // env[count-1] = xmalloc( (size_t)(STRLEN(di->di_key) + 1 + (STRLEN(str))  ) * sizeof(char_u));
-            // int res = sprintf(env[count-1], "%s=%s", var->di_key, str));
-            // TODO need to escape the var 
-            // use shell_xescape_xquote ?
-            env[count-1] = (char *)concat_str(var->di_key, concat_str((char_u *)"=", (char_u*)(str)));
-            ILOG("generated string: %s", env[count - 1]);
+            size_t len = STRLEN(var->di_key) + strlen(str) + strlen("=") + 1;
+            ILOG("value #%d: %s", i, str);
+            env[i] = xmallocz(len * sizeof(char));
+            snprintf(env[i], len, "%s=%s", (char *)var->di_key, str);
+            ILOG("generated string #%d: %s (len %d)", i, env[i], len);
 
+          } else {
+            // TODO generate an error
           }
+          i++;
         });
-
-        // must be null terminated
-      env = xrealloc(env, count + 1);
-      env[count] = NULL;
+      // must be null terminated
+      ILOG("Appending null at id=%d", env_size);
+      env[env_size] = NULL;
     }
-    ILOG("finished parsing env");
-
-    // if (v != NULL && v->di_tv.v_type == VAR_FUNC) {
-    //   if (v->di_tv.vval.v_string == NULL) {  // just in case
-    //     *lenp = 0;
-    //     return (char_u *)"";
-    //   }
-    //   *lenp = (int)STRLEN(v->di_tv.vval.v_string);
-    //   return v->di_tv.vval.v_string;
-    // }
 
     if (!common_job_callbacks(job_opts, &on_stdout, &on_stderr, &on_exit)) {
       shell_free_argv(argv);

@@ -92,7 +92,7 @@ int os_unsetenv(const char *name)
 #endif
 }
 
-char *os_getenvname_at_index(size_t index)
+char **os_getfullenv(void)
 {
 # if defined(HAVE__NSGETENVIRON)
   char **environ = *_NSGetEnviron();
@@ -100,6 +100,12 @@ char *os_getenvname_at_index(size_t index)
   // Borland C++ 5.2 has this in a header file.
   extern char         **environ;
 # endif
+  return environ;
+}
+
+char *os_getenvname_at_index(size_t index)
+{
+  char **environ = os_getfullenv();
   // check if index is inside the environ array
   for (size_t i = 0; i < index; i++) {
     if (environ[i] == NULL) {
