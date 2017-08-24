@@ -6723,26 +6723,29 @@ static inline attrentry_T * ATTR_ENTRY(int idx)
 
 
 /// Return the attr number for a set of colors and font.
-/// Add a new entry to the term_attr_table, attr_table or gui_attr_table
-/// if the combination is new.
+/// Add a new entry to the attr_table if the combination is new.
+///
 /// @return 0 for error.
-int get_attr_entry(attrentry_T *aep)
+int get_attr_entry(const attrentry_T *aep)
 {
   garray_T *table = &attr_table;
   attrentry_T *taep;
   static int recursive = FALSE;
+  static attrentry_T reset = ATTRENTRY_INIT;
 
-  /*
-   * Init the table, in case it wasn't done yet.
-   */
-  table->ga_itemsize = sizeof(attrentry_T);
-  ga_set_growsize(table, 7);
+  // Init the table, in case it wasn't done yet.
+  if (table->ga_len <= 0) {
+    table->ga_itemsize = sizeof(attrentry_T);
+    ga_set_growsize(table, 7);
 
-  /*
-   * Try to find an entry with the same specifications.
-   */
-  for (int i = 0; i < table->ga_len; ++i) {
-    taep = &(((attrentry_T *)table->ga_data)[i]);
+    taep = GA_APPEND_VIA_PTR(attrentry_T, table);
+    *taep = (attrentry_T)ATTRENTRY_INIT;
+  }
+
+  // Try to find an entry with the same specifications.
+  for (int i = 0; i < table->ga_len; i++) {
+    // taep = &(((attrentry_T *)table->ga_data)[i]);
+    taep = ATTR_ENTRY(i);
     if (aep->cterm_ae_attr == taep->cterm_ae_attr
         && aep->cterm_fg_color == taep->cterm_fg_color
         && aep->cterm_bg_color == taep->cterm_bg_color
@@ -6750,16 +6753,14 @@ int get_attr_entry(attrentry_T *aep)
         && aep->rgb_fg_color == taep->rgb_fg_color
         && aep->rgb_bg_color == taep->rgb_bg_color
         && aep->rgb_sp_color == taep->rgb_sp_color) {
-      return i + ATTR_OFF;
+      return i;
     }
   }
 
-  if (table->ga_len + ATTR_OFF > MAX_TYPENR) {
-    /*
-     * Running out of attribute entries!  remove all attributes, and
-     * compute new ones for all groups.
-     * When called recursively, we are really out of numbers.
-     */
+  if (table->ga_len > MAX_TYPENR) {
+     // Running out of attribute entries!  remove all attributes, and
+     // compute new ones for all groups.
+     // When called recursively, we are really out of numbers.
     if (recursive) {
       EMSG(_("E424: Too many different highlighting attributes in use"));
       return 0;
@@ -6767,6 +6768,7 @@ int get_attr_entry(attrentry_T *aep)
     recursive = TRUE;
 
     clear_hl_tables();
+    get_attr_entry(&reset);
 
     must_redraw = CLEAR;
 
@@ -6777,7 +6779,7 @@ int get_attr_entry(attrentry_T *aep)
     recursive = FALSE;
   }
 
-  
+
   // This is a new combination of colors and font, add an entry.
   taep = GA_APPEND_VIA_PTR(attrentry_T, table);
   memset(taep, 0, sizeof(*taep));
@@ -6789,13 +6791,14 @@ int get_attr_entry(attrentry_T *aep)
   taep->rgb_bg_color = aep->rgb_bg_color;
   taep->rgb_sp_color = aep->rgb_sp_color;
 
-  return table->ga_len - 1 + ATTR_OFF;
+  return table->ga_len - 1;
 }
 
 // Clear all highlight tables.
 void clear_hl_tables(void)
 {
   ga_clear(&attr_table);
+  // TODO set attr 0 to empty one
 }
 
 // Combine special attributes (e.g., for spelling) with other attributes
@@ -6811,6 +6814,7 @@ int hl_combine_attr(int char_attr, int prim_attr)
   attrentry_T *spell_aep;
   attrentry_T new_en = ATTRENTRY_INIT;
 
+  // TODO try without
   if (char_attr == 0) {
     return prim_attr;
   }
@@ -6862,7 +6866,7 @@ int hl_combine_attr(int char_attr, int prim_attr)
 /// \warn don't call it with attr 0 (i.e., the null attribute)
 attrentry_T *syn_cterm_attr2entry(int attr)
 {
-  attr -= ATTR_OFF;
+  // attr -= ATTR_OFF;
   if (attr >= attr_table.ga_len) {
     // did ":syntax clear"
     return NULL;
@@ -7106,6 +7110,7 @@ syn_list_header(int did_header, int outlen, int id)
 
 /// Set the attribute numbers for a highlight group.
 /// Called after one of the attributes has changed.
+///
 /// @param idx corrected highlight index
 static void
 set_hl_attr(int idx)
@@ -7125,15 +7130,15 @@ set_hl_attr(int idx)
   at_en.rgb_bg_color = sgp->sg_rgb_bg_name ? sgp->sg_rgb_bg : -1;
   at_en.rgb_sp_color = sgp->sg_rgb_sp_name ? sgp->sg_rgb_sp : -1;
 
-  if (at_en.cterm_fg_color != 0 || at_en.cterm_bg_color != 0
-      || at_en.rgb_fg_color != -1 || at_en.rgb_bg_color != -1
-      || at_en.rgb_sp_color != -1 || at_en.cterm_ae_attr != 0
-      || at_en.rgb_ae_attr != 0) {
-    sgp->sg_attr = get_attr_entry(&at_en);
-  } else {
-    // If all the fields are cleared, clear the attr field back to default value
-    sgp->sg_attr = 0;
-  }
+  // if (at_en.cterm_fg_color != 0 || at_en.cterm_bg_color != 0
+  //     || at_en.rgb_fg_color != -1 || at_en.rgb_bg_color != -1
+  //     || at_en.rgb_sp_color != -1 || at_en.cterm_ae_attr != 0
+  //     || at_en.rgb_ae_attr != 0) {
+  sgp->sg_attr = get_attr_entry(&at_en);
+  // } else {
+  //   // If all the fields are cleared, clear the attr field back to default value
+  //   sgp->sg_attr = 0;
+  // }
 }
 
 /// Lookup a highlight group name and return its ID.

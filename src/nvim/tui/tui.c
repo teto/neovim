@@ -861,7 +861,7 @@ static void tui_set_mode(UI *ui, ModeShape mode)
 
   if (c.id != 0 && ui->rgb) {
     int attr = syn_id2attr(c.id);
-    if (attr > 0) {
+    if (attr >= 0) {
       attrentry_T *aep = syn_cterm_attr2entry(attr);
       data->params[0].i = aep->rgb_bg_color;
       unibi_out_ext(ui, data->unibi_ext.set_cursor_color);

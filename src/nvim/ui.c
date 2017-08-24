@@ -174,10 +174,6 @@ Dictionary get_attr_by_id(Integer attr_id, Error *err)
   HlAttrs attrs = HLATTRS_INIT;
   Dictionary dic = ARRAY_DICT_INIT;
 
-  if (attr_id == 0) {
-    goto end;
-  }
-
   attrentry_T *aep = syn_cterm_attr2entry((int)attr_id);
   if (!aep) {
     api_set_error(err, kErrorTypeException,
@@ -186,8 +182,6 @@ Dictionary get_attr_by_id(Integer attr_id, Error *err)
   }
 
   attrs = attrentry2hlattrs(aep, p_tgc);
-
-end:
   return hlattrs2dict(attrs);
 }
 
@@ -517,9 +511,6 @@ static void set_highlight_args(int attr_code)
   HlAttrs rgb_attrs = HLATTRS_INIT;
   HlAttrs cterm_attrs = rgb_attrs;
 
-  if (attr_code == HL_NORMAL) {
-    goto end;
-  }
   attrentry_T *aep = syn_cterm_attr2entry(attr_code);
 
   if (!aep) {
