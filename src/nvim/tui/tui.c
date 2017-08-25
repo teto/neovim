@@ -866,32 +866,6 @@ static void tui_set_mode(UI *ui, ModeShape mode)
   cursorentry_T c = data->cursor_shapes[mode];
   int shape = c.shape;
 
-  // if (c.id != 0 && ui->rgb) {
-  //   int attr = syn_id2attr(c.id);
-  //   if (attr > 0) {
-  //     attrentry_T *aep = syn_cterm_attr2entry(attr);
-
-  //     attrentry2hlattrs (aep, p_tgc);
-  //     if (aep->background == kColorNone) {
-  //       // should work also if guibg=fg/guifg=bg ?
-  //       ILOG("SHOULD be made invisible");
-  //       unibi_out(ui, unibi_cursor_invisible);
-  //     } else {
-  //       unibi_out(ui, unibi_cursor_normal);  // display if previously invisible
-  //       if (hl.background != kColorInvalid) {
-  //         // data->params[0].i = hl.background;
-  //         data->params[0].i = aep->rgb_bg_color;
-  //         ILOG("setting cursor color");
-  //         unibi_out(ui, data->unibi_ext.set_cursor_color);
-  //       }
-  //       // if (hl.foreground != kColorInvalid) {
-  //       //   data->params[0].i = hl.foreground;
-  //       //   unibi_out(ui, data->unibi_ext.set_cursor_fg_color);
-  //       // }
-  //     }
-  //   }
-  // }
-
   switch (shape) {
     case SHAPE_BLOCK: shape = 1; break;
     case SHAPE_HOR:   shape = 3; break;
@@ -919,7 +893,7 @@ static void tui_set_mode(UI *ui, ModeShape mode)
       unibi_out(ui, unibi_cursor_normal);  // display if previously invisible
       data->params[0].i = cursor_bg;
       ILOG("setting cursor color");
-      unibi_out(ui, data->unibi_ext.set_cursor_color);
+      unibi_out_ext(ui, data->unibi_ext.set_cursor_color);
     }
   }
 }
