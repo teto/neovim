@@ -123,4 +123,7 @@ EXTERN RgbValue normal_fg INIT(= -1);
 EXTERN RgbValue normal_bg INIT(= -1);
 EXTERN RgbValue normal_sp INIT(= -1);
 
+// EXTERN const int kColorInvalid INIT(= -1);
+EXTERN const int kColorNone INIT(= -2);
+
 #endif  // NVIM_HIGHLIGHT_DEFS_H

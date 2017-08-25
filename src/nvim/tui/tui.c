@@ -119,6 +119,7 @@ typedef struct {
 
 static bool volatile got_winch = false;
 static bool cursor_style_enabled = false;
+static int cursor_bg = 0;
 
 #ifdef INCLUDE_GENERATED_DECLARATIONS
 # include "tui/tui.c.generated.h"
@@ -266,7 +267,7 @@ static void terminfo_stop(UI *ui)
   unibi_out_ext(ui, data->unibi_ext.disable_bracketed_paste);
   // Disable focus reporting
   unibi_out_ext(ui, data->unibi_ext.disable_focus_reporting);
-  flush_buf(ui, true);
+  flush_buf(ui, cursor_visible());
   uv_tty_reset_mode();
   uv_close((uv_handle_t *)&data->output_handle, NULL);
   uv_run(&data->write_loop, UV_RUN_DEFAULT);
@@ -776,6 +777,12 @@ CursorShape tui_cursor_decode_shape(const char *shape_str)
   return shape;
 }
 
+// if the cursor should be visible according to guicursor
+static bool cursor_visible (void)
+{
+  return cursor_bg != -1;
+}
+
 static cursorentry_T decode_cursor_entry(Dictionary args)
 {
   cursorentry_T r;
@@ -859,14 +866,31 @@ static void tui_set_mode(UI *ui, ModeShape mode)
   cursorentry_T c = data->cursor_shapes[mode];
   int shape = c.shape;
 
-  if (c.id != 0 && ui->rgb) {
-    int attr = syn_id2attr(c.id);
-    if (attr > 0) {
-      attrentry_T *aep = syn_cterm_attr2entry(attr);
-      data->params[0].i = aep->rgb_bg_color;
-      unibi_out_ext(ui, data->unibi_ext.set_cursor_color);
-    }
-  }
+  // if (c.id != 0 && ui->rgb) {
+  //   int attr = syn_id2attr(c.id);
+  //   if (attr > 0) {
+  //     attrentry_T *aep = syn_cterm_attr2entry(attr);
+
+  //     attrentry2hlattrs (aep, p_tgc);
+  //     if (aep->background == kColorNone) {
+  //       // should work also if guibg=fg/guifg=bg ?
+  //       ILOG("SHOULD be made invisible");
+  //       unibi_out(ui, unibi_cursor_invisible);
+  //     } else {
+  //       unibi_out(ui, unibi_cursor_normal);  // display if previously invisible
+  //       if (hl.background != kColorInvalid) {
+  //         // data->params[0].i = hl.background;
+  //         data->params[0].i = aep->rgb_bg_color;
+  //         ILOG("setting cursor color");
+  //         unibi_out(ui, data->unibi_ext.set_cursor_color);
+  //       }
+  //       // if (hl.foreground != kColorInvalid) {
+  //       //   data->params[0].i = hl.foreground;
+  //       //   unibi_out(ui, data->unibi_ext.set_cursor_fg_color);
+  //       // }
+  //     }
+  //   }
+  // }
 
   switch (shape) {
     case SHAPE_BLOCK: shape = 1; break;
@@ -876,6 +900,28 @@ static void tui_set_mode(UI *ui, ModeShape mode)
   }
   data->params[0].i = shape + (int)(c.blinkon == 0);
   unibi_out_ext(ui, data->unibi_ext.set_cursor_style);
+
+  // update cursor colors
+  if (c.id != 0) {
+    // HlAttrs attr = data->cursor_attrs[mode];
+    int attr = syn_id2attr(c.id);
+    if (attr > 0) {
+      attrentry_T *aep = syn_cterm_attr2entry(attr);
+      cursor_bg = aep->rgb_bg_color; // todo depends on rgb
+    }
+    else {
+      cursor_bg = -1;
+    }
+
+    if (cursor_bg == -1) {
+      unibi_out(ui, unibi_cursor_invisible);
+    } else {
+      unibi_out(ui, unibi_cursor_normal);  // display if previously invisible
+      data->params[0].i = cursor_bg;
+      ILOG("setting cursor color");
+      unibi_out(ui, data->unibi_ext.set_cursor_color);
+    }
+  }
 }
 
 /// @param mode editor mode
@@ -1030,7 +1076,7 @@ static void tui_flush(UI *ui)
 
   cursor_goto(ui, saved_row, saved_col);
 
-  flush_buf(ui, true);
+  flush_buf(ui, cursor_visible());
 }
 
 #ifdef UNIX

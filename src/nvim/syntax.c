@@ -6551,7 +6551,7 @@ do_highlight(char_u *line, int forceit, int init) {
             HL_TABLE()[idx].sg_rgb_fg = name_to_color(arg);
           } else {
             HL_TABLE()[idx].sg_rgb_fg_name = NULL;
-            HL_TABLE()[idx].sg_rgb_fg = -1;
+            HL_TABLE()[idx].sg_rgb_fg = kColorNone;
           }
         }
 
@@ -6569,7 +6569,7 @@ do_highlight(char_u *line, int forceit, int init) {
             HL_TABLE()[idx].sg_rgb_bg = name_to_color(arg);
           } else {
             HL_TABLE()[idx].sg_rgb_bg_name = NULL;
-            HL_TABLE()[idx].sg_rgb_bg = -1;
+            HL_TABLE()[idx].sg_rgb_bg = kColorNone;
           }
         }
 
@@ -6587,7 +6587,7 @@ do_highlight(char_u *line, int forceit, int init) {
             HL_TABLE()[idx].sg_rgb_sp = name_to_color(arg);
           } else {
             HL_TABLE()[idx].sg_rgb_sp_name = NULL;
-            HL_TABLE()[idx].sg_rgb_sp = -1;
+            HL_TABLE()[idx].sg_rgb_sp = kColorNone;
           }
         }
 
@@ -6677,9 +6677,10 @@ static int hl_has_settings(int idx, int check_link)
   return HL_TABLE()[idx].sg_attr != 0
          || HL_TABLE()[idx].sg_cterm_fg != 0
          || HL_TABLE()[idx].sg_cterm_bg != 0
-         || HL_TABLE()[idx].sg_rgb_fg_name != NULL
-         || HL_TABLE()[idx].sg_rgb_bg_name != NULL
-         || HL_TABLE()[idx].sg_rgb_sp_name != NULL
+         // TODO differ from unitialized value
+         || HL_TABLE()[idx].sg_rgb_fg != -1
+         || HL_TABLE()[idx].sg_rgb_bg != -1
+         || HL_TABLE()[idx].sg_rgb_sp != -1
          || (check_link && (HL_TABLE()[idx].sg_set & SG_LINK));
 }
 

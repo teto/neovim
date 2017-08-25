@@ -744,12 +744,21 @@ void nvim_unsubscribe(uint64_t channel_id, String event)
   channel_unsubscribe(channel_id, e);
 }
 
+/// Translate to integer if \p name is an hex value (e.g. #XXXXXX),
+/// else look into \p color_name_table to translate a color name to  its
+/// hex value
+///
+/// @param[in] name string value to convert to RGB, e.g. "red", "#ff00ff", "bg"
+/// @return the hex value or -1 if could not find a correct value
 Integer nvim_get_color_by_name(String name)
   FUNC_API_SINCE(1)
 {
   return name_to_color((char_u *)name.data);
 }
 
+/// Maps X11 color names to their respective RGB integer
+///
+/// @returns a dictionary of [color_name] = integer value
 Dictionary nvim_get_color_map(void)
   FUNC_API_SINCE(1)
 {
