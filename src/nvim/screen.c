@@ -355,7 +355,7 @@ void update_screen(int type)
       //curwin->w_redr_type < NOT_VALID
       true
       && (curwin->w_p_nu || curwin->w_p_rnu)
-      ?? TODO revisit with number_width(curwin) : 0))
+      // TODO revisit with number_width(curwin) : 0))
       && curwin->w_nrwidth_width != ret) {
     curwin->w_nrwidth_width = ret;
     curwin->w_redr_type = NOT_VALID;
