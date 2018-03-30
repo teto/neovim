@@ -257,7 +257,7 @@ void update_screen(int type)
     must_redraw = 0;
   }
 
-  /* Need to update w_lines[]. */
+  // Need to update w_lines[]
   if (curwin->w_lines_valid == 0 && type < NOT_VALID) {
     type = NOT_VALID;
   }
@@ -352,10 +352,10 @@ void update_screen(int type)
   //                              ? number_width(curwin) : 0))
   int ret = compute_number_width(curwin);
   if (
-      //curwin->w_redr_type < NOT_VALID
+      // curwin->w_redr_type < NOT_VALID
       true
       && (curwin->w_p_nu || curwin->w_p_rnu)
-      // TODO revisit with number_width(curwin) : 0))
+      // TODO(teto): revisit with number_width(curwin) : 0))
       && curwin->w_nrwidth_width != ret) {
     curwin->w_nrwidth_width = ret;
     curwin->w_redr_type = NOT_VALID;
@@ -365,7 +365,7 @@ void update_screen(int type)
   int nesting = getDeepestNesting();
   if (
       true
-      //curwin->w_redr_type < NOT_VALID
+      // curwin->w_redr_type < NOT_VALID
       && curwin->w_fdcwidth != nesting) {
     curwin->w_fdcwidth = nesting;
     curwin->w_redr_type = NOT_VALID;
@@ -1623,8 +1623,7 @@ static void win_update(win_T *wp)
 /// @note Returns a constant for now but hopefully we can improve neovim so that
 ///       the returned value width adapts to the maximum number of marks to draw
 ///       for the window
-/// TODO(teto)
-int win_signcol_width(win_T *wp)
+int win_signcol_width(const win_T *wp)
 {
   // 2 is vim default value
   return 2;
@@ -1738,7 +1737,7 @@ int compute_foldcolumn(const win_T *wp, int col)
   int wmw = (wp == curwin && p_wmw == 0) ? 1 : p_wmw;
   int wwidth = wp->w_width;
 
-  if(wp->w_p_fdc < 0) {
+  if (wp->w_p_fdc < 0) {
     // if automatic sizing, lookup in cache
     fdc = wp->w_fdcwidth;
     // redraw_win_later(wp, NOT_VALID);
@@ -1747,7 +1746,7 @@ int compute_foldcolumn(const win_T *wp, int col)
   if (fdc > wwidth - (col + wmw)) {
     fdc = wwidth - (col + wmw);
   }
-  ILOG("Compute fdc=", fdc );
+  ILOG("Compute fdc=", fdc);
   return fdc;
 }
 
@@ -1801,7 +1800,7 @@ static void fold_line(
     int n_extra = fill_foldcolumn(buf, wp, fdc, lnum, false);
     // buf[n_extra] = '\0';
     screen_puts_len(buf, n_extra, screen_Rows, col, hl_attr(HLF_FC));
-    // TODO reestablish right/left
+    // TODO(teto): reestablish right/left
     if (wp->w_p_rl) {
       int i;
 
@@ -1859,7 +1858,7 @@ static void fold_line(
         // 'number' + 'norelativenumber'
         num = (long)lnum;
       } else {
-        /* 'relativenumber', don't use negative numbers */
+        // 'relativenumber', don't use negative numbers
         num = labs((long)get_cursor_rel_lnum(wp, lnum));
         if (num == 0 && wp->w_p_nu && wp->w_p_rnu) {
           /* 'number' + 'relativenumber': cursor line shows absolute
@@ -2167,7 +2166,7 @@ fill_foldcolumn(
     if (i == fdc-1) {
       for (i++; i < results.ga_len; i++) {
         bool closed = check_closed(wp, fp[i], &use_level, i, &maybe_small,
-                                    current_line-fold_starting_line+1);
+                                   current_line-fold_starting_line+1);
         kFoldChar k = fill_foldcolumn_single(
             fp[i], current_line,
             &fold_starting_line, wrapped, closed);
@@ -2175,7 +2174,7 @@ fill_foldcolumn(
       }
     }
     int m = fold_chars[symbol];
-    // TODO use strwidth/assume monocell ?
+    // use strwidth/assume monocell ?
     int char2cells = mb_char2cells(m);
 
     mb_char2bytes(m, &p[char_counter]);
@@ -2817,7 +2816,7 @@ win_line (
         draw_state = WL_FOLD;
         if (fdc > 0) {
           // Draw the 'foldcolumn' not closed
-          // TODO double check against master
+          // TODO(teto): double check against master
           bool wrapped = true;
           if (row == startrow + filler_lines && filler_todo <= 0) {
             wrapped= false;
@@ -2825,7 +2824,8 @@ win_line (
           // not sure I undersstand but this is how it's done for
           n_extra = fill_foldcolumn(extra, wp, fdc, lnum, wrapped);
           // if(wrapped)
-          //   ILOG("screen_row=%d lnum=%d col=%d wrapped=%d", screen_row, lnum, col, filler_todo);
+          // ILOG("screen_row=%d lnum=%d col=%d wrapped=%d",
+          // screen_row, lnum, col, filler_todo);
           p_extra = extra;
           p_extra[n_extra] = NUL;
           c_extra = NUL;
@@ -2882,10 +2882,10 @@ win_line (
             char *fmt = "%*ld ";
 
             if (wp->w_p_nu && !wp->w_p_rnu) {
-              /* 'number' + 'norelativenumber' */
+              // 'number' + 'norelativenumber'
               num = (long)lnum;
             } else {
-              /* 'relativenumber', don't use negative numbers */
+              // 'relativenumber', don't use negative numbers
               num = labs((long)get_cursor_rel_lnum(wp, lnum));
               if (num == 0 && wp->w_p_nu && wp->w_p_rnu) {
                 /* 'number' + 'relativenumber' */
@@ -5427,10 +5427,8 @@ void screen_puts_len(char_u *text, int textlen, int row, int col, int attr)
     }
   }
 
-  if (ScreenLines == NULL || row >= screen_Rows)        /* safety check */
   // safety check
-  // if (ScreenLines == NULL || row > screen_Rows)
-  {
+  if (ScreenLines == NULL || row > screen_Rows) {
     ELOG("Wrong parameters");
     return;
   }
@@ -6081,7 +6079,7 @@ retry:
   } else {
     done_outofmem_msg = FALSE;
 
-    for (new_row = 0; new_row < Rows; ++new_row) {
+    for (new_row = 0; new_row < Rows + 1; new_row++) {
       new_LineOffset[new_row] = new_row * Columns;
       new_LineWraps[new_row] = FALSE;
 
@@ -7124,7 +7122,8 @@ static void win_redr_ruler(win_T *wp, int always)
  * Otherwise it depends on 'numberwidth' and the line count.
  */
 
-int number_width(const win_T *wp) {
+int number_width(const win_T *wp)
+{
   return wp->w_nrwidth_width;
 }
 
@@ -7135,12 +7134,11 @@ int compute_number_width(const win_T *wp)
 
   if (!wp->w_p_rnu && !wp->w_p_nu) {
     return 0;
-  }
-  else if (wp->w_p_rnu && !wp->w_p_nu) {
-    /* cursor line shows "0" */
+  } else if (wp->w_p_rnu && !wp->w_p_nu) {
+    // cursor line shows "0"
     lnum = wp->w_height;
   } else {
-    /* cursor line shows absolute line number */
+    // cursor line shows absolute line number
     lnum = wp->w_buffer->b_ml.ml_line_count;
   }
 
@@ -7150,11 +7148,12 @@ int compute_number_width(const win_T *wp)
     ++n;
   } while (lnum > 0);
 
-  /* 'numberwidth' gives the minimal width plus one */
+  // 'numberwidth' gives the minimal width plus one
   if (n < wp->w_p_nuw - 1) {
     n = wp->w_p_nuw - 1;
   }
-  ILOG(" compute_number_width nu=%d rnu=%d result=%d" , wp->w_p_nu, wp->w_p_rnu, n);
+  ILOG("compute_number_width nu=%d rnu=%d result=%d",
+       wp->w_p_nu, wp->w_p_rnu, n);
 
   return n;
 }
