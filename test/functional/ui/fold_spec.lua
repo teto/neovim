@@ -215,6 +215,7 @@ end)
 local Screen = require('test.functional.ui.screen')
 
 local helpers = require('test.functional.helpers')(after_each)
+local nvim = helpers.meths
 local feed, insert, execute, expect_any, command =
   helpers.feed, helpers.insert, helpers.execute, helpers.expect_any,
   helpers.command
@@ -257,12 +258,12 @@ describe('foldchars', function()
 	-- :highlight FoldColumn guibg=darkgrey guifg=white
     -- set foldminlines just tells about which folds to close, unrelated to their size :s
     -- test with minimum size of folds 
-    command("call nvim_fold_create(nvim_get_current_win(), 1, 4)")
-    command("call nvim_fold_create(nvim_get_current_win(), 1, 3)")
-    command("call nvim_fold_create(nvim_get_current_win(), 1, 2)")
+    command("call nvim_win_add_fold(nvim_get_current_win(), 1, 4)")
+    command("call nvim_win_add_fold(nvim_get_current_win(), 1, 3)")
+    command("call nvim_win_add_fold(nvim_get_current_win(), 1, 2)")
     command("%foldopen!")
-    command("call nvim_fold_create(nvim_get_current_win(), 6, line('$'))")
-    command("call nvim_fold_create(nvim_get_current_win(), 7, line('$'))")
+    command("call nvim_win_add_fold(nvim_get_current_win(), 6, line('$'))")
+    command("call nvim_win_add_fold(nvim_get_current_win(), 7, line('$'))")
     feed("gg")
 
     local expected = [[

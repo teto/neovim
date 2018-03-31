@@ -14,6 +14,42 @@
 #include "nvim/window.h"
 #include "nvim/screen.h"
 #include "nvim/move.h"
+#include "nvim/fold.h"
+
+/// Create a fold from line "start" to line "end" (inclusive) in the current
+/// window.
+/// @param window
+/// @param start starting line
+/// @param end starting end
+/// @param err
+void nvim_win_add_fold(Window window, Integer start, Integer end, Error *err)
+  FUNC_API_SINCE(4)
+{
+  win_T *win = find_window_by_handle(window, err);
+
+  if (!win) {
+    return;
+  }
+
+  foldCreate(win, start, end);
+}
+
+/// Delete a fold at line "start" in the current window.
+/// When "end" is not 0, delete all folds from "start" to "end".
+/// When "recursive" is TRUE delete recursively.
+/// @param window
+void nvim_win_del_fold(
+    Window window, Integer start, Integer end, Boolean recursive, Error *err)
+  FUNC_API_SINCE(4)
+{
+  win_T *win = find_window_by_handle(window, err);
+
+  if (!win) {
+    return;
+  }
+
+  deleteFold(start, end, recursive, false);
+}
 
 
 /// Gets the current buffer in a window
