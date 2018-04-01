@@ -106,7 +106,7 @@ int hasAnyFolding(win_T *win)
  */
 bool hasFolding(linenr_T lnum, linenr_T *firstp, linenr_T *lastp)
 {
-  return hasFoldingWin(curwin, lnum, firstp, lastp, true, NULL);
+  return hasFoldingWin(curwin, lnum, firstp, lastp, true);
 }
 
 /// Return all folds that contain a specific line
@@ -137,15 +137,13 @@ void getFolds(const garray_T *gap, linenr_T lnum, garray_T *out)
 /// @param[out] lastp last line covered by the fold
 /// @param[out] infop where to store fold info, can be null
 /// @param cache when true: use cached values of window
-/// @param infop where to store fold info
 /// @return true
 bool hasFoldingWin(
     win_T *const win,
     const linenr_T lnum,
     linenr_T *const firstp,
     linenr_T *const lastp,
-    const bool cache,
-    foldinfo_T *const infop
+    const bool cache
 )
 {
   bool had_folded = false;
@@ -266,23 +264,20 @@ int foldLevel(linenr_T lnum)
 // Return false if line is not folded.
 bool lineFolded(win_T *const win, const linenr_T lnum)
 {
-  return foldedCount(win, lnum, NULL) != 0;
+  return foldedCount(win, lnum) != 0;
 }
 
-/* foldedCount() {{{2 */
-/*
- * Count the number of lines that are folded at line number "lnum".
- * Normally "lnum" is the first line of a possible fold, and the returned
- * number is the number of lines in the fold.
- * Doesn't use caching from the displayed window.
- * Returns number of folded lines from "lnum", or 0 if line is not folded.
- * When "infop" is not NULL, fills *infop with the fold level info.
- */
-long foldedCount(win_T *win, linenr_T lnum, foldinfo_T *infop)
+// foldedCount() {{{2
+/// Count the number of lines that are folded at line number "lnum".
+/// @param lnum first line of a possible fold,
+/// @return number is the number of lines in the fold.
+/// Doesn't use caching from the displayed window.
+/// Returns number of folded lines from "lnum", or 0 if line is not folded.
+long foldedCount(win_T *win, linenr_T lnum)
 {
   linenr_T last;
 
-  if (hasFoldingWin(win, lnum, NULL, &last, false, infop)) {
+  if (hasFoldingWin(win, lnum, NULL, &last, false)) {
     return (long)(last - lnum + 1);
   }
   return 0;
@@ -556,7 +551,7 @@ void foldCreate(win_T *wp, linenr_T start, linenr_T end)
 
   checkupdate(wp);
 
-  /* Find the place to insert the new fold. */
+  // Find the place to insert the new fold
   gap = &wp->w_folds;
   for (;; ) {
     if (!foldFind(gap, start_rel, &fp))
@@ -567,12 +562,14 @@ void foldCreate(win_T *wp, linenr_T start, linenr_T end)
       start_rel -= fp->fd_top;
       end_rel -= fp->fd_top;
       if (use_level || fp->fd_flags == FD_LEVEL) {
-        use_level = TRUE;
-        if (level >= wp->w_p_fdl)
-          closed = TRUE;
-      } else if (fp->fd_flags == FD_CLOSED)
-        closed = TRUE;
-      ++level;
+        use_level = true;
+        if (level >= wp->w_p_fdl) {
+          closed = true;
+        }
+      } else if (fp->fd_flags == FD_CLOSED) {
+        closed = true;
+      }
+      level++;
     } else {
       /* This fold and new fold overlap: Insert here and move some folds
        * inside the new fold. */
@@ -639,12 +636,10 @@ void foldCreate(win_T *wp, linenr_T start, linenr_T end)
 
 
 // deleteFold() {{{2
-/// Delete a fold at line "start" in the current window.
-/// When "end" is not 0, delete all folds from "start" to "end".
-/// When "recursive" is TRUE delete recursively.
 /// @param had_visual TRUE when Visual selection used
 /// @see nvim_fold_delete
 void deleteFold(
+    win_T *const win,
     const linenr_T start,
     const linenr_T end,
     const int recursive,
@@ -661,11 +656,11 @@ void deleteFold(
   linenr_T first_lnum = MAXLNUM;
   linenr_T last_lnum = 0;
 
-  checkupdate(curwin);
+  checkupdate(win);
 
   while (lnum <= end) {
     // Find the deepest fold for "start".
-    garray_T *gap = &curwin->w_folds;
+    garray_T *gap = &win->w_folds;
     garray_T *found_ga = NULL;
     linenr_T lnum_off = 0;
     bool use_level = false;
@@ -677,10 +672,11 @@ void deleteFold(
       found_fp = fp;
       found_off = lnum_off;
 
-      /* if "lnum" is folded, don't check nesting */
-      if (check_closed(curwin, fp, &use_level, level,
-              &maybe_small, lnum_off))
+      // if "lnum" is folded, don't check nesting
+      if (check_closed(win, fp, &use_level, level,
+                       &maybe_small, lnum_off)) {
         break;
+      }
 
       /* check nested folds */
       gap = &fp->fd_nested;
@@ -692,16 +688,16 @@ void deleteFold(
     } else {
       lnum = found_fp->fd_top + found_fp->fd_len + found_off;
 
-      if (foldmethodIsManual(curwin))
+      if (foldmethodIsManual(win)) {
         deleteFoldEntry(found_ga,
             (int)(found_fp - (fold_T *)found_ga->ga_data), recursive);
-      else {
+      } else {
         if (first_lnum > found_fp->fd_top + found_off)
           first_lnum = found_fp->fd_top + found_off;
         if (last_lnum < lnum)
           last_lnum = lnum;
         if (!did_one)
-          parseMarker(curwin);
+          parseMarker(win);
         deleteFoldMarkers(found_fp, recursive, found_off);
       }
       did_one = true;
@@ -1091,14 +1087,9 @@ static int foldLevelWin(win_T *wp, linenr_T lnum)
 static void checkupdate(win_T *wp)
 {
   if (wp->w_foldinvalid) {
-     // will update all
+    // will update all
     foldUpdate(wp, (linenr_T)1, (linenr_T)MAXLNUM);
 
-    /* int res = getDeepestNestingRecurse(&wp->w_folds); */
-    /* if (res != wp->w_fdcwidth) { */
-    /*   fold_changed = true; */
-    /*   wp->w_fdcwidth = res; */
-    /* } */
     wp->w_foldinvalid = false;
   }
 }
@@ -1719,8 +1710,8 @@ char_u *get_foldtext(win_T *wp, linenr_T lnum, linenr_T lnume,
     set_vim_var_nr(VV_FOLDSTART, (varnumber_T) lnum);
     set_vim_var_nr(VV_FOLDEND, (varnumber_T) lnume);
 
-    // Set "v:folddashes" to a string of "level" dashes.
-    // Set "v:foldlevel" to "level".
+    // Set "v:folddashes" to a string of "level" dashes
+    // Set "v:foldlevel" to "level"
     if (level > (int)sizeof(dashes) - 1) {
       level = (int)sizeof(dashes) - 1;
     }

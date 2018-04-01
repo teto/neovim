@@ -1487,7 +1487,7 @@ int diff_check(win_T *wp, linenr_T lnum)
   }
 
   // A closed fold never has filler lines.
-  if (hasFoldingWin(wp, lnum, NULL, NULL, true, NULL)) {
+  if (hasFoldingWin(wp, lnum, NULL, NULL, true)) {
     return 0;
   }
 
@@ -1804,7 +1804,7 @@ void diff_set_topline(win_T *fromwin, win_T *towin)
 
   check_topfill(towin, false);
   (void)hasFoldingWin(towin, towin->w_topline, &towin->w_topline,
-                      NULL, true, NULL);
+                      NULL, true);
 }
 
 /// This is called when 'diffopt' is changed.

@@ -1343,7 +1343,7 @@ int plines_m_win(win_T *wp, linenr_T first, linenr_T last)
   while (first <= last) {
     // Check if there are any really folded lines, but also included lines
     // that are maybe folded.
-    linenr_T x = foldedCount(wp, first, NULL);
+    linenr_T x = foldedCount(wp, first);
     if (x > 0) {
       ++count;              /* count 1 for "+-- folded" line */
       first += x;
@@ -2077,12 +2077,14 @@ static void changed_common(linenr_T lnum, colnr_T col, linenr_T lnume, long xtra
        * might be displayed differently.
        * Set w_cline_folded here as an efficient way to update it when
        * inserting lines just above a closed fold. */
-      bool folded = hasFoldingWin(wp, lnum, &lnum, NULL, false, NULL);
-      if (wp->w_cursor.lnum == lnum)
+      bool folded = hasFoldingWin(wp, lnum, &lnum, NULL, false);
+      if (wp->w_cursor.lnum == lnum) {
         wp->w_cline_folded = folded;
-      folded = hasFoldingWin(wp, lnume, NULL, &lnume, false, NULL);
-      if (wp->w_cursor.lnum == lnume)
+      }
+      folded = hasFoldingWin(wp, lnume, NULL, &lnume, false);
+      if (wp->w_cursor.lnum == lnume) {
         wp->w_cline_folded = folded;
+      }
 
       /* If the changed line is in a range of previously folded lines,
        * compare with the first line in that range. */

@@ -8770,7 +8770,7 @@ static void foldclosed_both(typval_T *argvars, typval_T *rettv, int end)
   if (lnum >= 1 && lnum <= curbuf->b_ml.ml_line_count) {
     linenr_T first;
     linenr_T last;
-    if (hasFoldingWin(curwin, lnum, &first, &last, false, NULL)) {
+    if (hasFoldingWin(curwin, lnum, &first, &last, false)) {
       if (end) {
         rettv->vval.v_number = (varnumber_T)last;
       } else {
@@ -8870,8 +8870,8 @@ static void f_foldtextresult(typval_T *argvars, typval_T *rettv, FunPtr fptr)
 {
   char_u      *text;
   char_u buf[FOLD_TEXT_LEN];
-  foldinfo_T foldinfo;
   int fold_count;
+  garray_T results = GA_EMPTY_INIT_VALUE;
 
   rettv->v_type = VAR_STRING;
   rettv->vval.v_string = NULL;
@@ -8881,11 +8881,12 @@ static void f_foldtextresult(typval_T *argvars, typval_T *rettv, FunPtr fptr)
     lnum = 0;
   }
   fold_count = foldedCount(curwin, lnum, &foldinfo);
+  getFolds(&curwin->w_folds, lnum, &results);
   if (fold_count > 0) {
     text = get_foldtext(curwin, lnum, lnum + fold_count - 1,
-                        foldinfo.fi_level, buf);
+                        results.ga_len, buf);
     text = get_foldtext(curwin, lnum, lnum + fold_count - 1,
-                        foldinfo.fi_level, buf);
+                        results.ga_len, buf);
     if (text == buf) {
       text = vim_strsave(text);
     }

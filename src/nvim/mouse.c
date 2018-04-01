@@ -39,8 +39,8 @@ static int orig_topfill = 0;
 /// @param inclusive used for inclusive operator, can be NULL
 /// @param flags teswt
 ///
-/// If @p flags has MOUSE_FOCUS, then the current window will not be changed, and
-/// if the mouse is outside the window then the text will scroll, or if the
+/// If @p flags has MOUSE_FOCUS, then the current window will not be changed,
+/// and if the mouse is outside the window then the text will scroll, or if the
 /// mouse was previously on a status line, then the status line may be dragged.
 ///
 /// If @p flags has MOUSE_MAY_VIS, then VIsual mode will be started before the
@@ -114,9 +114,7 @@ retnomove:
   // fold column. NB: only works for ASCII chars!
   if (row >= 0 && row < Rows && col >= 0 && col <= Columns
       && ScreenLines != NULL) {
-    /* TODO check wit master */
-    /* mouse_char = ScreenLines[LineOffset[row] + (unsigned)col][0]; */
-    // TODO getchar at this place
+    // TODO(teto): getchar at this place
     char bytes[6];
     int attr;
     screen_getbytes(row, col, (char_u *)&bytes, &attr);
@@ -124,8 +122,7 @@ retnomove:
     // mouse_char = ScreenLines[LineOffset[row] + (unsigned)col];
     mouse_char = utf_ptr2char((const char_u *)&bytes);
     ILOG("converted to %d", mouse_char);
-  }
-  else {
+  } else {
     mouse_char = ' ';
   }
 
@@ -395,7 +392,7 @@ bool mouse_comp_pos(win_T *win, int *rowp, int *colp, linenr_T *lnump)
   while (row > 0) {
     // Don't include filler lines in "count"
     if (win->w_p_diff
-        && !hasFoldingWin(win, lnum, NULL, NULL, true, NULL)) {
+        && !hasFoldingWin(win, lnum, NULL, NULL, true)) {
       if (lnum == win->w_topline) {
         row -= win->w_topfill;
       } else {
@@ -410,7 +407,7 @@ bool mouse_comp_pos(win_T *win, int *rowp, int *colp, linenr_T *lnump)
       break;            // Position is in this buffer line.
     }
 
-    (void)hasFoldingWin(win, lnum, NULL, &lnum, true, NULL);
+    (void)hasFoldingWin(win, lnum, NULL, &lnum, true);
 
     if (lnum == win->w_buffer->b_ml.ml_line_count) {
       retval = true;

@@ -518,7 +518,7 @@ void update_single_line(win_T *wp, linenr_T lnum)
   updating_screen = true;
 
   if (lnum >= wp->w_topline && lnum < wp->w_botline
-      && foldedCount(wp, lnum, NULL) == 0) {
+      && foldedCount(wp, lnum) == 0) {
     row = 0;
     for (j = 0; j < wp->w_lines_valid; ++j) {
       if (lnum == wp->w_lines[j].wl_lnum) {
@@ -800,14 +800,14 @@ static void win_update(win_T *wp)
           }
         }
 
-      (void)hasFoldingWin(wp, mod_top, &mod_top, NULL, true, NULL);
+      (void)hasFoldingWin(wp, mod_top, &mod_top, NULL, true);
       if (mod_top > lnumt) {
         mod_top = lnumt;
       }
 
       // Now do the same for the bottom line (one above mod_bot).
       mod_bot--;
-      (void)hasFoldingWin(wp, mod_bot, NULL, &mod_bot, true, NULL);
+      (void)hasFoldingWin(wp, mod_bot, NULL, &mod_bot, true);
       mod_bot++;
       if (mod_bot < lnumb) {
         mod_bot = lnumb;
@@ -891,11 +891,12 @@ static void win_update(win_T *wp)
         /* count the number of lines we are off, counting a sequence
          * of folded lines as one */
         j = 0;
-        for (ln = wp->w_topline; ln < wp->w_lines[0].wl_lnum; ++ln) {
-          ++j;
-          if (j >= wp->w_height - 2)
+        for (ln = wp->w_topline; ln < wp->w_lines[0].wl_lnum; ln++) {
+          j++;
+          if (j >= wp->w_height - 2) {
             break;
-          (void)hasFoldingWin(wp, ln, NULL, &ln, true, NULL);
+          }
+          (void)hasFoldingWin(wp, ln, NULL, &ln, true);
         }
       } else
         j = wp->w_lines[0].wl_lnum - wp->w_topline;
@@ -1326,7 +1327,7 @@ static void win_update(win_T *wp)
            * rows, and may insert/delete lines */
           j = idx;
           for (l = lnum; l < mod_bot; l++) {
-            if (hasFoldingWin(wp, l, NULL, &l, true, NULL)) {
+            if (hasFoldingWin(wp, l, NULL, &l, true)) {
               new_rows++;
             } else if (l == wp->w_topline) {
               new_rows += plines_win_nofill(wp, l, true) + wp->w_topfill;
@@ -1427,7 +1428,7 @@ static void win_update(win_T *wp)
        */
       garray_T results = GA_EMPTY_INIT_VALUE;
       getFolds(&wp->w_folds, lnum, &results);
-      fold_count = foldedCount(wp, lnum, NULL);
+      fold_count = foldedCount(wp, lnum);
 
       if (fold_count != 0) {
         fold_line(wp, fold_count, results.ga_len, lnum, row);
@@ -2208,7 +2209,7 @@ win_line (
     linenr_T lnum,
     int startrow,
     int endrow,
-    bool nochange                    /* not updating for changed text */
+    bool nochange
 )
 {
   unsigned off;                         // offset in ScreenLines/ScreenAttrs
@@ -2821,7 +2822,7 @@ win_line (
           if (row == startrow + filler_lines && filler_todo <= 0) {
             wrapped= false;
           }
-          // not sure I undersstand but this is how it's done for
+          // not sure I understand but this is how it's done for
           n_extra = fill_foldcolumn(extra, wp, fdc, lnum, wrapped);
           // if(wrapped)
           // ILOG("screen_row=%d lnum=%d col=%d wrapped=%d",
@@ -5652,7 +5653,7 @@ static void prepare_search_hl(win_T *wp, linenr_T lnum)
         for (shl->first_lnum = lnum;
              shl->first_lnum > wp->w_topline;
              shl->first_lnum--) {
-          if (hasFoldingWin(wp, shl->first_lnum - 1, NULL, NULL, true, NULL)) {
+          if (hasFoldingWin(wp, shl->first_lnum - 1, NULL, NULL, true)) {
             break;
           }
         }

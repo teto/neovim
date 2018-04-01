@@ -48,7 +48,7 @@ void nvim_win_del_fold(
     return;
   }
 
-  deleteFold(start, end, recursive, false);
+  deleteFold(win, start, end, recursive, false);
 }
 
 

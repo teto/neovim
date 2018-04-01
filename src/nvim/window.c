@@ -4923,7 +4923,7 @@ void scroll_to_fraction(win_T *wp, int prev_height)
       set_topline(wp, lnum);
     } else if (sline > 0) {
       while (sline > 0 && lnum > 1) {
-        (void)hasFoldingWin(wp, lnum, &lnum, NULL, true, NULL);
+        (void)hasFoldingWin(wp, lnum, &lnum, NULL, true);
         if (lnum == 1) {
           /* first line in buffer is folded */
           line_size = 1;
@@ -4941,11 +4941,8 @@ void scroll_to_fraction(win_T *wp, int prev_height)
       }
 
       if (sline < 0) {
-        /*
-         * Line we want at top would go off top of screen.  Use next
-         * line instead.
-         */
-        (void)hasFoldingWin(wp, lnum, NULL, &lnum, true, NULL);
+        // Line we want at top would go off top of screen.Use next line instead
+        (void)hasFoldingWin(wp, lnum, NULL, &lnum, true);
         lnum++;
         wp->w_wrow -= line_size + sline;
       } else if (sline > 0) {
