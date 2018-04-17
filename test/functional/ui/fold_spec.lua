@@ -326,7 +326,7 @@ describe('foldchars', function()
       command("set foldminlines="..limit)
       -- TODO echo that one nvim_get_current_win(),
 
-      command("call nvim_fold_create(nvim_get_current_win(), 1, 4)")
+      command("call nvim_win_add_fold(nvim_get_current_win(), 1, 4)")
       while i < limit + 2 do
         command("")
         local ret = command("echo foldclosed(1)")

@@ -801,7 +801,9 @@ int linetabsize_col(int startcol, char_u *s)
 /// @param len
 ///
 /// @return Number of characters the string will take on the screen.
-unsigned int win_linetabsize(const win_T *wp, char_u *line, colnr_T len)
+unsigned int win_linetabsize(
+    const win_T const *wp, char_u *line, colnr_T len
+)
 {
   colnr_T col = 0;
 
@@ -990,7 +992,9 @@ int lbr_chartabsize_adv(char_u *line, char_u **s, colnr_T col)
 /// @param headp
 ///
 /// @return The number of characters taken up on the screen.
-int win_lbr_chartabsize(const win_T *wp, char_u *line, char_u *s, colnr_T col, int *headp)
+int win_lbr_chartabsize(
+    const win_T *wp, char_u *line, char_u *s, colnr_T col, int *headp
+)
 {
   colnr_T col2;
   colnr_T col_adj = 0; /* col + screen size of tab */
@@ -1144,7 +1148,9 @@ int win_lbr_chartabsize(const win_T *wp, char_u *line, char_u *s, colnr_T col, i
 /// @param headp
 ///
 /// @return The number of characters take up on the screen.
-static int win_nolbr_chartabsize(const win_T *wp, char_u *s, colnr_T col, int *headp)
+static int win_nolbr_chartabsize(
+    const win_T *wp, char_u *s, colnr_T col, int *headp
+)
 {
   int n;
 

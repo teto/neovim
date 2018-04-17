@@ -86,10 +86,10 @@ EXTERN struct nvim_stats_s {
 /// enum to identify character
 /// order matters as it used to prioritize some symbols over others
 typedef enum {
-  kFoldOpenMid,     //!< vertical sep
-  kFoldOpenStart,   //!< Mark the start of an open fold
-  kFoldOpenLast,    //!< Mark the last line of an open fold
-  kFoldClosed       //!< Show a closed fold
+  kFoldOpenMid,     ///< vertical sep
+  kFoldOpenStart,   ///< Mark the start of an open fold
+  kFoldOpenLast,    ///< Mark the last line of an open fold
+  kFoldClosed       ///< Show a closed fold
 } kFoldChar;
 
 /* Values for "starting" */

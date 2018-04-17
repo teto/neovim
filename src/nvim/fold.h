@@ -8,15 +8,6 @@
 #include "nvim/types.h"
 #include "nvim/buffer_defs.h"
 
-/// TODO REMOVE ?
-//typedef struct foldinfo {
-//  linenr_T fi_lnum;             /* line number where fold starts */
-//  int fi_level;                 /* level of the fold; when this is zero the
-//                                   other fields are invalid */
-//  int fi_low_level;     ///< lowest fold level that starts in the same
-//                        ///< line=> bigger number i.e. fi_low_level >= fi_level
-//} foldinfo_T;
-
 // local declarations. {{{1
 // typedef fold_T {{{2
 /// The toplevel folds for each window are stored in the w_folds growarray.

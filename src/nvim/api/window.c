@@ -35,9 +35,11 @@ void nvim_win_add_fold(Window window, Integer start, Integer end, Error *err)
 }
 
 /// Delete a fold at line "start" in the current window.
-/// When "end" is not 0, delete all folds from "start" to "end".
-/// When "recursive" is TRUE delete recursively.
+///
 /// @param window
+/// @param start delete all folds from start to end when not 0
+/// @param end delete all folds from start to end when not 0
+/// @param recursive delete recursively if true
 void nvim_win_del_fold(
     Window window, Integer start, Integer end, Boolean recursive, Error *err)
   FUNC_API_SINCE(4)

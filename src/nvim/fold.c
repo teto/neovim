@@ -521,7 +521,7 @@ int foldManualAllowed(int create)
 }
 
 // foldCreate() {{{2
-/// @see nvim_fold_create
+/// @see nvim_win_add_fold
 void foldCreate(win_T *wp, linenr_T start, linenr_T end)
 {
   fold_T      *fp;

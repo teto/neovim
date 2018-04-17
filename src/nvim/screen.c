@@ -2078,6 +2078,7 @@ static void copy_text_attr(int off, char_u *buf, int len, int attr)
 
 
 /// Returns fold marker to be used depending on context
+///
 /// @param fp check current fold
 /// @param current_line line we are lookint at
 /// @param[in,out] starting line of the fold
@@ -2204,8 +2205,8 @@ fill_foldcolumn(
 /// @return the number of last row the line occupies.
 /// @see fold_line
 static int
-win_line (
-    win_T *wp,
+win_line(
+    const win_T *wp,
     linenr_T lnum,
     int startrow,
     int endrow,
