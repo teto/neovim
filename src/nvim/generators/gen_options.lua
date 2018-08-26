@@ -1,8 +1,12 @@
 local printhelp = function ()
-  print('Usage: genoptions.lua {header|mpack} src/nvim options_file')
+  print('Usage: gen_options.lua {header|mpack} src/nvim options_file')
   print('       header to generate options.generated.h')
   print('       mpack to generate runtime/data/options.mpack')
   os.exit(0)
+end
+
+if arg[1] == '--help' then
+  printhelp()
 end
 
 local action = arg[1]
