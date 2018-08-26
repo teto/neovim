@@ -5853,9 +5853,8 @@ comp_textwidth (
         textwidth -= 1;
     }
 
-    if (curwin->w_p_nu || curwin->w_p_rnu) {
+    if (curwin->w_p_nu || curwin->w_p_rnu)
       textwidth -= 8;
-    }
   }
   if (textwidth < 0)
     textwidth = 0;

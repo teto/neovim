@@ -2988,7 +2988,7 @@ static int win_alloc_firstwin(win_T *oldwin)
     RESET_BINDING(curwin);
   }
 
-  curwin->w_nrwidth_width = compute_number_width(curwin);
+  curwin->w_nrwidth_width = number_width(curwin);
   curwin->w_fdcwidth = getDeepestNesting();
   new_frame(curwin);
   topframe = curwin->w_frame;

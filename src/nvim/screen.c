@@ -347,29 +347,10 @@ void update_screen(int type)
 
   /* Force redraw when width of 'number' or 'relativenumber' column
    * changes. */
-  // if (curwin->w_redr_type < NOT_VALID
-  //     && curwin->w_nrwidth != ((curwin->w_p_nu || curwin->w_p_rnu)
-  //                              ? number_width(curwin) : 0))
-  int ret = compute_number_width(curwin);
-  if (
-      // curwin->w_redr_type < NOT_VALID
-      true
-      && (curwin->w_p_nu || curwin->w_p_rnu)
-      // TODO(teto): revisit with number_width(curwin) : 0))
-      && curwin->w_nrwidth_width != ret) {
-    curwin->w_nrwidth_width = ret;
+  if (curwin->w_redr_type < NOT_VALID
+      && curwin->w_nrwidth != ((curwin->w_p_nu || curwin->w_p_rnu)
+                               ? number_width(curwin) : 0))
     curwin->w_redr_type = NOT_VALID;
-  }
-
-  // fold
-  int nesting = getDeepestNesting();
-  if (
-      true
-      // curwin->w_redr_type < NOT_VALID
-      && curwin->w_fdcwidth != nesting) {
-    curwin->w_fdcwidth = nesting;
-    curwin->w_redr_type = NOT_VALID;
-  }
 
   /*
    * Only start redrawing if there is really something to do.
@@ -705,7 +686,7 @@ static void win_update(win_T *wp)
 
   /* Force redraw when width of 'number' or 'relativenumber' column
    * changes. */
-  i = (wp->w_p_nu || wp->w_p_rnu) ? compute_number_width(wp) : 0;
+  i = (wp->w_p_nu || wp->w_p_rnu) ? number_width(wp) : 0;
   if (wp->w_nrwidth != i) {
     type = NOT_VALID;
     wp->w_nrwidth = i;
@@ -1624,7 +1605,7 @@ static void win_update(win_T *wp)
 /// @note Returns a constant for now but hopefully we can improve neovim so that
 ///       the returned value width adapts to the maximum number of marks to draw
 ///       for the window
-int win_signcol_width(const win_T *wp)
+int win_signcol_width(const win_T *const wp)
 {
   // 2 is vim default value
   return 2;
@@ -1733,7 +1714,7 @@ static int advance_color_col(int vcol, int **color_cols)
 int compute_foldcolumn(const win_T *wp, int col)
 {
   int fdc = wp->w_p_fdc;
-  int wmw = (wp == curwin && p_wmw == 0) ? 1 : p_wmw;
+  int wmw = wp == curwin && p_wmw == 0 ? 1 : p_wmw;
   int wwidth = wp->w_width;
 
   if (wp->w_p_fdc < 0) {
@@ -1745,7 +1726,7 @@ int compute_foldcolumn(const win_T *wp, int col)
   if (fdc > wwidth - (col + wmw)) {
     fdc = wwidth - (col + wmw);
   }
-  ILOG("Compute fdc=", fdc);
+  ILOG("Compute fdc=%d", fdc);
   return fdc;
 }
 
@@ -2061,9 +2042,10 @@ static void fold_line(
   }
 }
 
+
 /// Copy "buf[len]" to ScreenLines["off"] and set attributes to "attr".
 ///
-/// @warn Only works for ASCII text!
+/// Only works for ASCII text!
 static void copy_text_attr(int off, char_u *buf, int len, int attr)
 {
   int i;
@@ -2111,7 +2093,7 @@ static kFoldChar fill_foldcolumn_single(
 ///
 /// @param p To fill with characters
 /// @param fdc available width
-/// @param lnum Absolute line number
+/// @param lnum Absolute current line number
 /// @param wrapped screen line is a wrapped continuation of absolute line
 ///
 /// Assume monocell characters
@@ -2119,7 +2101,7 @@ static kFoldChar fill_foldcolumn_single(
 static int
 fill_foldcolumn(
     char_u *p,
-    const win_T *wp,
+    win_T *const wp,
     int fdc,
     linenr_T lnum,
     bool wrapped
@@ -2203,7 +2185,7 @@ fill_foldcolumn(
 /// @return the number of last row the line occupies.
 /// @see fold_line
 static int
-win_line(
+win_line (
     win_T *wp,
     linenr_T lnum,
     int startrow,
@@ -2815,19 +2797,22 @@ win_line(
 
         draw_state = WL_FOLD;
         if (fdc > 0) {
-          // Draw the 'foldcolumn' not closed
-          // TODO(teto): double check against master
+          // Draw the 'foldcolumn'.  Allocate a buffer, "extra" may
+          // already be in use.
           bool wrapped = true;
           if (row == startrow + filler_lines && filler_todo <= 0) {
             wrapped= false;
           }
+          xfree(p_extra_free);
+          p_extra_free = xmalloc(12*6 + 1);
           // not sure I understand but this is how it's done for
-          n_extra = fill_foldcolumn(extra, wp, fdc, lnum, wrapped);
+          n_extra = fill_foldcolumn(p_extra_free, wp, fdc, lnum, wrapped);
           // if(wrapped)
           // ILOG("screen_row=%d lnum=%d col=%d wrapped=%d",
           // screen_row, lnum, col, filler_todo);
           p_extra = extra;
-          p_extra[n_extra] = NUL;
+          p_extra_free[n_extra] = NUL;
+          p_extra = p_extra_free;
           c_extra = NUL;
           char_attr = win_hl_attr(wp, HLF_FC);
         }
@@ -2881,11 +2866,11 @@ win_line(
             long num;
             char *fmt = "%*ld ";
 
-            if (wp->w_p_nu && !wp->w_p_rnu) {
-              // 'number' + 'norelativenumber'
+            if (wp->w_p_nu && !wp->w_p_rnu)
+              /* 'number' + 'norelativenumber' */
               num = (long)lnum;
-            } else {
-              // 'relativenumber', don't use negative numbers
+            else {
+              /* 'relativenumber', don't use negative numbers */
               num = labs((long)get_cursor_rel_lnum(wp, lnum));
               if (num == 0 && wp->w_p_nu && wp->w_p_rnu) {
                 /* 'number' + 'relativenumber' */
@@ -2903,9 +2888,8 @@ win_line(
               rl_mirror(extra);
             p_extra = extra;
             c_extra = NUL;
-          } else {
+          } else
             c_extra = ' ';
-          }
           n_extra = number_width(wp) + 1;
           char_attr = win_hl_attr(wp, HLF_N);
           // When 'cursorline' is set highlight the line number of
@@ -4668,7 +4652,7 @@ void win_redraw_last_status(frame_T *frp)
 /*
  * Draw the verticap separator right of window "wp" starting with line "row".
  */
-static void draw_vsep_win(const win_T *wp, int row)
+static void draw_vsep_win(const win_T *const wp, int row)
 {
   int hl;
   int c;
@@ -5343,11 +5327,10 @@ void screen_putchar(int c, int row, int col, int attr)
   screen_puts(buf, row, col, attr);
 }
 
-
-/// Get a single character directly from ScreenLines into "bytes[]".
-/// Also return its attribute in *attrp;
-/// @param[out] bytes
-/// @param[out] attrp must be set
+/*
+ * Get a single character directly from ScreenLines into "bytes[]".
+ * Also return its attribute in *attrp;
+ */
 void screen_getbytes(int row, int col, char_u *bytes, int *attrp)
 {
   unsigned off;
@@ -5427,11 +5410,8 @@ void screen_puts_len(char_u *text, int textlen, int row, int col, int attr)
     }
   }
 
-  // safety check
-  if (ScreenLines == NULL || row > screen_Rows) {
-    ELOG("Wrong parameters");
+  if (ScreenLines == NULL || row >= screen_Rows)        /* safety check */
     return;
-  }
   off = LineOffset[row] + col;
 
   /* When drawing over the right halve of a double-wide char clear out the
@@ -6906,7 +6886,7 @@ static int fillchar_status(int *attr, win_T *wp)
 /// Get the character to use in a separator between vertically split windows.
 /// @param[out] attr Get its attributes in "*attr".
 /// @return character to use to fill char
-static int fillchar_vsep(const win_T *wp, int *attr)
+static int fillchar_vsep(const win_T *const wp, int *attr)
 {
   *attr = win_hl_attr(wp, HLF_C);
   return fill_vert;
@@ -7121,26 +7101,21 @@ static void win_redr_ruler(win_T *wp, int always)
  * Caller may need to check if 'number' or 'relativenumber' is set.
  * Otherwise it depends on 'numberwidth' and the line count.
  */
-
-int number_width(const win_T *wp)
-{
-  return wp->w_nrwidth_width;
-}
-
-int compute_number_width(const win_T *wp)
+int number_width(win_T *wp)
 {
   int n;
   linenr_T lnum;
 
-  if (!wp->w_p_rnu && !wp->w_p_nu) {
-    return 0;
-  } else if (wp->w_p_rnu && !wp->w_p_nu) {
-    // cursor line shows "0"
+  if (wp->w_p_rnu && !wp->w_p_nu)
+    /* cursor line shows "0" */
     lnum = wp->w_height;
-  } else {
-    // cursor line shows absolute line number
+  else
+    /* cursor line shows absolute line number */
     lnum = wp->w_buffer->b_ml.ml_line_count;
-  }
+
+  if (lnum == wp->w_nrwidth_line_count)
+    return wp->w_nrwidth_width;
+  wp->w_nrwidth_line_count = lnum;
 
   n = 0;
   do {
@@ -7155,6 +7130,7 @@ int compute_number_width(const win_T *wp)
   ILOG("compute_number_width nu=%d rnu=%d result=%d",
        wp->w_p_nu, wp->w_p_rnu, n);
 
+  wp->w_nrwidth_width = n;
   return n;
 }
 

@@ -61,7 +61,6 @@ void nvim_fold_create(Window window, Integer start, Integer end, Error *err)
   if (!win) {
     return;
   }
-  // Window is 
   foldCreate(win, start, end);
 }
 

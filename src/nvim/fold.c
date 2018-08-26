@@ -624,7 +624,7 @@ void foldCreate(win_T *wp, linenr_T start, linenr_T end)
 
 
 // deleteFold() {{{2
-/// @param had_visual TRUE when Visual selection used
+/// @param had_visual true when Visual selection used
 /// @see nvim_fold_delete
 void deleteFold(
     win_T *const win,
@@ -1075,9 +1075,7 @@ static int foldLevelWin(win_T *wp, linenr_T lnum)
 static void checkupdate(win_T *wp)
 {
   if (wp->w_foldinvalid) {
-    // will update all
-    foldUpdate(wp, (linenr_T)1, (linenr_T)MAXLNUM);
-
+    foldUpdate(wp, (linenr_T)1, (linenr_T)MAXLNUM);     /* will update all */
     wp->w_foldinvalid = false;
   }
 }
@@ -1461,7 +1459,7 @@ static int getDeepestNestingRecurse(garray_T *gap)
 /// @param[out] maybe_smallp TRUE: outer this had fd_small == kNone
 /// @param lnum_off line number offset for fp->fd_top
 bool check_closed(
-    const win_T *const win,
+    win_T *const win,
     fold_T *const fp,
     bool *const use_levelp,
     const int level,
@@ -1503,7 +1501,7 @@ bool check_closed(
 /// @param lnum_off offset for fp->fd_top
 static void
 checkSmall(
-    const win_T *const wp,
+    win_T *const wp,
     fold_T *const fp,
     const linenr_T lnum_off       // offset for fp->fd_top
 )
@@ -1917,11 +1915,10 @@ static void foldUpdateIEMS(win_T *const wp, linenr_T top, linenr_T bot)
       /* If a fold started here, we already had the level, if it stops
        * here, we need to use lvl_next.  Could also start and end a fold
        * in the same line. */
-      if (fline.lvl > level) {
+      if (fline.lvl > level)
         fline.lvl = level - (fline.lvl - fline.lvl_next);
-      } else {
+      else
         fline.lvl = fline.lvl_next;
-      }
     }
     fline.lnum = top;
     getlevel(&fline);
@@ -2039,10 +2036,9 @@ static void foldUpdateIEMS(win_T *const wp, linenr_T top, linenr_T bot)
   /* There can't be any folds from start until end now. */
   foldRemove(&wp->w_folds, start, end);
 
-  // If some fold changed, need to redraw and position cursor
-  if (fold_changed && wp->w_p_fen) {
+  /* If some fold changed, need to redraw and position cursor. */
+  if (fold_changed && wp->w_p_fen)
     changed_window_setting_win(wp);
-  }
 
   /* If we updated folds past "bot", need to redraw more lines.  Don't do
    * this in other situations, the changed lines will be redrawn anyway and

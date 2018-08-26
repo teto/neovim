@@ -1186,7 +1186,9 @@ struct window_S {
   int w_fraction;
   int w_prev_fraction_row;
 
-  int w_nrwidth_width;        ///< nr of chars to print line count. */
+  linenr_T w_nrwidth_line_count;        /* line count when ml_nrwidth_width
+                                         * was computed. */
+  int w_nrwidth_width;                  /* nr of chars to print line count. */
 
   qf_info_T   *w_llist;                 /* Location list for this window */
   /*
@@ -1196,7 +1198,7 @@ struct window_S {
   qf_info_T   *w_llist_ref;
 };
 
-static inline int win_hl_attr(const win_T *wp, int hlf)
+static inline int win_hl_attr(const win_T *const wp, int hlf)
 {
   return wp->w_hl_attrs[hlf];
 }
