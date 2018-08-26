@@ -8880,7 +8880,7 @@ static void f_foldtextresult(typval_T *argvars, typval_T *rettv, FunPtr fptr)
   if (lnum < 0) {
     lnum = 0;
   }
-  fold_count = foldedCount(curwin, lnum, &foldinfo);
+  fold_count = foldedCount(curwin, lnum);
   getFolds(&curwin->w_folds, lnum, &results);
   if (fold_count > 0) {
     text = get_foldtext(curwin, lnum, lnum + fold_count - 1,

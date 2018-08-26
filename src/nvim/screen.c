@@ -1729,8 +1729,6 @@ static int advance_color_col(int vcol, int **color_cols)
 
 /// Compute the width of the foldcolumn.  Based on 'foldcolumn' and how much
 /// space is available for window "wp", minus "col".
-/// @param wp
-/// @param col is that ever != 0 ?
 /// @return foldcolumn width in cell unit
 int compute_foldcolumn(const win_T *wp, int col)
 {
@@ -1800,7 +1798,7 @@ static void fold_line(
   if (fdc > 0) {
     int n_extra = fill_foldcolumn(buf, wp, fdc, lnum, false);
     // buf[n_extra] = '\0';
-    screen_puts_len(buf, n_extra, screen_Rows, col, hl_attr(HLF_FC));
+    screen_puts_len(buf, n_extra, screen_Rows, col, win_hl_attr(wp, HLF_FC));
     // TODO(teto): reestablish right/left
     if (wp->w_p_rl) {
       int i;
@@ -2206,7 +2204,7 @@ fill_foldcolumn(
 /// @see fold_line
 static int
 win_line(
-    const win_T *wp,
+    win_T *wp,
     linenr_T lnum,
     int startrow,
     int endrow,
@@ -4670,7 +4668,7 @@ void win_redraw_last_status(frame_T *frp)
 /*
  * Draw the verticap separator right of window "wp" starting with line "row".
  */
-static void draw_vsep_win(win_T *wp, int row)
+static void draw_vsep_win(const win_T *wp, int row)
 {
   int hl;
   int c;
@@ -6081,7 +6079,7 @@ retry:
   } else {
     done_outofmem_msg = FALSE;
 
-    for (new_row = 0; new_row < Rows + 1; new_row++) {
+    for (new_row = 0; new_row < Rows; ++new_row) {
       new_LineOffset[new_row] = new_row * Columns;
       new_LineWraps[new_row] = FALSE;
 
@@ -6908,7 +6906,7 @@ static int fillchar_status(int *attr, win_T *wp)
 /// Get the character to use in a separator between vertically split windows.
 /// @param[out] attr Get its attributes in "*attr".
 /// @return character to use to fill char
-static int fillchar_vsep(win_T *wp, int *attr)
+static int fillchar_vsep(const win_T *wp, int *attr)
 {
   *attr = win_hl_attr(wp, HLF_C);
   return fill_vert;

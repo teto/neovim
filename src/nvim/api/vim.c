@@ -47,7 +47,6 @@
 # include "api/vim.c.generated.h"
 #endif
 
-
 /// Create a fold from line "start" to line "end" (inclusive) in the current
 /// window.
 /// @param window
@@ -73,17 +72,13 @@ void nvim_fold_create(Window window, Integer start, Integer end, Error *err)
 void nvim_fold_delete(Window window, Integer start, Integer end, Boolean recursive, Error *err)
   FUNC_API_SINCE(4)
 {
-  win_T *win = find_window_by_handle(window, err);
+  win_T *const win = find_window_by_handle(window, err);
 
   if (!win) {
     return;
   }
 
-  deleteFold(
-    start,
-    end,
-    recursive,
-    false);
+  deleteFold(win, start, end, recursive, false);
 }
 
 /// Executes an ex-command.

@@ -21,7 +21,7 @@ add_custom_command(OUTPUT ${GENERATED_SYN_VIM}
     ${FUNCS_DATA}
 )
 
-file(GLOB PACKAGES ${PROJECT_SOURCE_DIR}/runtime/pack/dist/opt/*)
+file(GLOB PACKAGES ${PROJECT_SOURCE_DIR}/runtime/pack/dist/var/empty/*)
 
 set(GENERATED_PACKAGE_TAGS)
 foreach(PACKAGE ${PACKAGES})
@@ -53,7 +53,7 @@ foreach(PACKAGE ${PACKAGES})
 
     install_helper(
       FILES ${GENERATED_PACKAGE_DIR}/${PACKNAME}/doc/tags "${${PACKNAME}_DOC_NAMES}"
-      DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/nvim/runtime/pack/dist/opt/${PACKNAME}/doc)
+      DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/nvim/runtime/pack/dist/var/empty/${PACKNAME}/doc)
 
     list(APPEND GENERATED_PACKAGE_TAGS "${GENERATED_PACKAGE_DIR}/${PACKNAME}/doc/tags")
   endif()

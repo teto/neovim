@@ -802,7 +802,7 @@ int linetabsize_col(int startcol, char_u *s)
 ///
 /// @return Number of characters the string will take on the screen.
 unsigned int win_linetabsize(
-    const win_T const *wp, char_u *line, colnr_T len
+    const win_T *const wp, char_u *line, colnr_T len
 )
 {
   colnr_T col = 0;
@@ -1149,7 +1149,7 @@ int win_lbr_chartabsize(
 ///
 /// @return The number of characters take up on the screen.
 static int win_nolbr_chartabsize(
-    const win_T *wp, char_u *s, colnr_T col, int *headp
+    const win_T *const wp, char_u *s, colnr_T col, int *headp
 )
 {
   int n;
@@ -1161,7 +1161,7 @@ static int win_nolbr_chartabsize(
   n = ptr2cells(s);
 
   // Add one cell for a double-width character in the last column of the
-  // window, displayed with a ">".
+// window, displayed with a ">".
   if ((n == 2) && (MB_BYTE2LEN(*s) > 1) && in_win_border(wp, col)) {
     if (headp != NULL) {
       *headp = 1;

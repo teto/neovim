@@ -455,7 +455,7 @@ int get_number_indent(linenr_T lnum)
  * parameters into account. Window must be specified, since it is not
  * necessarily always the current one.
  */
-int get_breakindent_win(win_T *wp, char_u *line)
+int get_breakindent_win(const win_T *const wp, char_u *line)
   FUNC_ATTR_NONNULL_ARG(1)
 {
   static int prev_indent = 0;  // Cached indent value.

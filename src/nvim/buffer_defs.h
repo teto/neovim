@@ -1196,7 +1196,7 @@ struct window_S {
   qf_info_T   *w_llist_ref;
 };
 
-static inline int win_hl_attr(win_T *wp, int hlf)
+static inline int win_hl_attr(const win_T *wp, int hlf)
 {
   return wp->w_hl_attrs[hlf];
 }

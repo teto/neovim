@@ -4171,10 +4171,6 @@ static char *set_num_option(int opt_idx, char_u *varp, long value,
       errmsg = e_positive;
     }
   } else if (pp == &curwin->w_p_fdc || pp == &curwin->w_allbuf_opt.wo_fdc) {
-    if (value < 0) {
-      errmsg = e_positive;
-  } else if (pp == &curwin->w_p_fdc
-             || pp == (long *)GLOBAL_WO(&curwin->w_p_fdc)) {
     if (value < -1) {
       errmsg = e_invarg;
     } else if (value > 12) {
@@ -5622,7 +5618,7 @@ void win_copy_options(win_T *wp_from, win_T *wp_to)
  * The 'scroll' option is not copied, because it depends on the window height.
  * The 'previewwindow' option is reset, there can be only one preview window.
  */
-void copy_winopt(const winopt_T const *from, winopt_T *to)
+void copy_winopt(const winopt_T *const from, winopt_T *to)
 {
   to->wo_arab = from->wo_arab;
   to->wo_list = from->wo_list;
@@ -7084,7 +7080,7 @@ int csh_like_shell(void)
 }
 
 /// Return true when window "wp" has a column to draw signs in.
-bool signcolumn_on(const win_T const *wp)
+bool signcolumn_on(const win_T *const wp)
 {
     if (*wp->w_p_scl == 'n') {
       return false;

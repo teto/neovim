@@ -1995,7 +1995,7 @@ void do_pending_operator(cmdarg_T *cap, int old_col, bool gui_yank)
     case OP_FOLDDEL:
     case OP_FOLDDELREC:
       VIsual_reselect = false;          /* don't reselect now */
-      deleteFold(oap->start.lnum, oap->end.lnum,
+      deleteFold(curwin, oap->start.lnum, oap->end.lnum,
           oap->op_type == OP_FOLDDELREC, oap->is_VIsual);
       break;
 
@@ -4333,7 +4333,7 @@ dozet:
       if (VIsual_active)
         nv_operator(cap);
       else
-        deleteFold(curwin->w_cursor.lnum,
+        deleteFold(curwin, curwin->w_cursor.lnum,
             curwin->w_cursor.lnum, nchar == 'D', false);
   }
     break;
@@ -4343,7 +4343,7 @@ dozet:
       clearFolding(curwin);
       changed_window_setting();
   } else if (foldmethodIsMarker(curwin))
-      deleteFold((linenr_T)1, curbuf->b_ml.ml_line_count,
+      deleteFold(curwin, (linenr_T)1, curbuf->b_ml.ml_line_count,
           true, false);
     else
       EMSG(_("E352: Cannot erase folds with current 'foldmethod'"));

@@ -57,8 +57,8 @@ static int orig_topfill = 0;
 /// If flags has MOUSE_SETPOS, nothing is done, only the current position is
 /// remembered.
 int jump_to_mouse(int flags,
-                  bool *inclusive,
-                  int which_button)
+                  bool *inclusive,  // used for inclusive operator, can be NULL
+                  int which_button)  // MOUSE_LEFT, MOUSE_RIGHT, MOUSE_MIDDLE
 {
   static int on_status_line = 0;        // #lines below bottom of window
   static int on_sep_line = 0;           // on separator right of window
@@ -114,13 +114,14 @@ retnomove:
   // fold column. NB: only works for ASCII chars!
   if (row >= 0 && row < Rows && col >= 0 && col <= Columns
       && ScreenLines != NULL) {
+    mouse_char = ScreenLines[LineOffset[row] + (unsigned)col][0];
     // TODO(teto): getchar at this place
-    char bytes[6];
-    int attr;
-    screen_getbytes(row, col, (char_u *)&bytes, &attr);
+    // char bytes[6];
+    // int attr;
+    // screen_getbytes(row, col, (char_u *)&bytes, &attr);
     //   to use with utf_ptr2char
     // mouse_char = ScreenLines[LineOffset[row] + (unsigned)col];
-    mouse_char = utf_ptr2char((const char_u *)&bytes);
+    // mouse_char = utf_ptr2char((const char_u *)&bytes);
     ILOG("converted to %d", mouse_char);
   } else {
     mouse_char = ' ';

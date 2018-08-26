@@ -35,8 +35,8 @@
 #include "nvim/undo.h"
 #include "nvim/ops.h"
 
-/* Flag is set when redrawing is needed. */
-static int fold_changed;
+// Flag is set when redrawing is needed.
+static bool fold_changed;
 
 /* Function used by foldUpdateIEMSRecurse */
 typedef void (*LevelGetter)(fline_T *);
@@ -161,8 +161,6 @@ bool hasFoldingWin(
    * Return quickly when there is no folding at all in this window.
    */
   if (!hasAnyFolding(win)) {
-    if (infop != NULL)
-      infop->fi_level = 0;
     return false;
   }
 
@@ -213,11 +211,6 @@ bool hasFoldingWin(
   }
 
   if (!had_folded) {
-    if (infop != NULL) {
-      infop->fi_level = level;
-      infop->fi_lnum = lnum - lnum_rel;
-      infop->fi_low_level = low_level == 0 ? level : low_level;
-    }
     return false;
   }
 
@@ -228,11 +221,6 @@ bool hasFoldingWin(
     *lastp = last;
   if (firstp != NULL)
     *firstp = first;
-  if (infop != NULL) {
-    infop->fi_level = level + 1;
-    infop->fi_lnum = first;
-    infop->fi_low_level = low_level == 0 ? level + 1 : low_level;
-  }
   return true;
 }
 
@@ -1472,8 +1460,8 @@ static int getDeepestNestingRecurse(garray_T *gap)
 /// @param level folding depth
 /// @param[out] maybe_smallp TRUE: outer this had fd_small == kNone
 /// @param lnum_off line number offset for fp->fd_top
-static bool check_closed(
-    win_T *const win,
+bool check_closed(
+    const win_T *const win,
     fold_T *const fp,
     bool *const use_levelp,
     const int level,
@@ -1515,7 +1503,7 @@ static bool check_closed(
 /// @param lnum_off offset for fp->fd_top
 static void
 checkSmall(
-    win_T *const wp,
+    const win_T *const wp,
     fold_T *const fp,
     const linenr_T lnum_off       // offset for fp->fd_top
 )
