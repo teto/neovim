@@ -41,7 +41,7 @@ int libuv_process_spawn(LibuvProcess *uvproc)
 #endif
   uvproc->uvopts.exit_cb = exit_cb;
   uvproc->uvopts.cwd = proc->cwd;
-  uvproc->uvopts.env = NULL;  // Inherits the parent (nvim) env.
+  uvproc->uvopts.env = proc->env;
   uvproc->uvopts.stdio = uvproc->uvstdio;
   uvproc->uvopts.stdio_count = 3;
   uvproc->uvstdio[0].flags = UV_IGNORE;
@@ -49,6 +49,7 @@ int libuv_process_spawn(LibuvProcess *uvproc)
   uvproc->uvstdio[2].flags = UV_IGNORE;
   uvproc->uv.data = proc;
 
+  ILOG("Calling uv_spawn with env=%p", proc->env);
   if (!proc->in.closed) {
     uvproc->uvstdio[0].flags = UV_CREATE_PIPE | UV_READABLE_PIPE;
 #ifdef WIN32

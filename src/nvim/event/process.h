@@ -23,6 +23,7 @@ struct process {
   const char *cwd;
   char **argv;
   Stream in, out, err;
+  char **env;
   process_exit_cb cb;
   internal_process_cb internal_exit_cb, internal_close_cb;
   bool closed, detach;
