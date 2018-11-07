@@ -55,32 +55,37 @@ describe('jobs', function()
 
   it('append environment #env', function()
     -- nvim('command', "let $VAR = 'abc'")
-    nvim('command', "let g:job_opts.env = {'TOTO': 'hello world', 'tata': 'plop'}")
+    -- , 'tata': 'plop'
+    nvim('command', "let g:job_opts.env = {'TOTO': 'hello world'}")
     -- if iswin() then
     --   nvim('command', "let j = jobstart('echo $env:VAR', g:job_opts)")
     -- else
       -- nvim('command', "let j = jobstart(['echo', \"$PATH\" ], g:job_opts)")
+      -- use -n to remove newline
       nvim('command', "let j = jobstart('echo $TOTO', g:job_opts)")
+      -- nvim('command', "let j = jobstart(['env', '-i', 'TOTO=hello\ world'], g:job_opts)")
     -- end
     eq({'notification', 'stdout', {0, {'hello world', ''}}}, next_msg())
     eq({'notification', 'exit', {0, 0}}, next_msg())
   end)
 
-  it('replace environment #env', function()
-    -- nvim('command', "let $VAR = 'abc'")
-    -- , 'tata': 'plop'
-    nvim('command', "let g:job_opts.env = {'TOTO': 'hello world'}")
-    nvim('command', "let g:job_opts.reset_env = 1")
-    -- if iswin() then
-    --   nvim('command', "let j = jobstart('echo $env:VAR', g:job_opts)")
-    -- else
-      -- nvim('command', "let j = jobstart(['echo', \"$PATH\" ], g:job_opts)")
-      -- TODO works if path is correct
-      nvim('command', "let j = jobstart(['/usr/bin/env', '-i', 'TOTO=\"hello world\"'], g:job_opts)")
-    -- end
-    eq({'notification', 'stdout', {0, {'TOTO=hello world', ''}}}, next_msg())
-    eq({'notification', 'exit', {0, 0}}, next_msg())
-  end)
+  --it('replace environment #env', function()
+  --  -- nvim('command', "let $VAR = 'abc'")
+  --  -- 
+  --  -- , 'tata': 'plop'
+  --  nvim('command', "let g:job_opts.env = {'TOTO': 'hello world'}")
+  --  nvim('command', "let g:job_opts.clear_env = v:true")
+  --  -- if iswin() then
+  --  --   nvim('command', "let j = jobstart('echo $env:VAR', g:job_opts)")
+  --  -- else
+  --    -- nvim('command', "let j = jobstart(['echo', \"$PATH\" ], g:job_opts)")
+  --    -- TODO works if path is correct
+  --    nvim('command', "let j = jobstart(['env'], g:job_opts)")
+  --    -- nvim('command', "let j = jobstart(['/bin/sh', '-i', 'TOTO=\"hello world\"'], g:job_opts)")
+  --  -- end
+  --  eq({'notification', 'stdout', {0, {'TOTO=hello world', ''}}}, next_msg())
+  --  -- eq({'notification', 'exit', {0, 0}}, next_msg())
+  --end)
 
   it('uses &shell and &shellcmdflag if passed a string', function()
     nvim('command', "let $VAR = 'abc'")
