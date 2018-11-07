@@ -282,7 +282,7 @@ Channel *channel_job_start(char **argv, CallbackReader on_stdout,
                            CallbackReader on_stderr, Callback on_exit,
                            bool pty, bool rpc, bool detach, const char *cwd,
                            uint16_t pty_width, uint16_t pty_height,
-                           char *term_name, varnumber_T *status_out)
+                           char **env, char *term_name, varnumber_T *status_out)
 {
   Channel *chan = channel_alloc(kChannelStreamProc);
   chan->on_stdout = on_stdout;
@@ -318,6 +318,7 @@ Channel *channel_job_start(char **argv, CallbackReader on_stdout,
   proc->events = chan->events;
   proc->detach = detach;
   proc->cwd = cwd;
+  proc->env = env;
 
   char *cmd = xstrdup(proc->argv[0]);
   bool has_out, has_err;

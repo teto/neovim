@@ -105,7 +105,6 @@
 #include "nvim/eval/executor.h"
 #include "nvim/eval/gc.h"
 #include "nvim/macros.h"
-#include "nvim/os/os.h"
 
 // TODO(ZyX-I): Remove DICT_MAXNEST, make users be non-recursive instead
 
@@ -11706,9 +11705,9 @@ static void f_jobstart(typval_T *argvars, typval_T *rettv, FunPtr fptr)
   bool detach = false;
   bool rpc = false;
   bool pty = false;
+  bool clear_env = false;
   CallbackReader on_stdout = CALLBACK_READER_INIT,
                  on_stderr = CALLBACK_READER_INIT;
-  bool reset_env = false;
   Callback on_exit = CALLBACK_NONE;
   char *cwd = NULL;
   if (argvars[1].v_type == VAR_DICT) {
@@ -11717,7 +11716,7 @@ static void f_jobstart(typval_T *argvars, typval_T *rettv, FunPtr fptr)
     detach = tv_dict_get_number(job_opts, "detach") != 0;
     rpc = tv_dict_get_number(job_opts, "rpc") != 0;
     pty = tv_dict_get_number(job_opts, "pty") != 0;
-    reset_env = tv_dict_get_number(job_opts, "reset_env") != 0;
+    clear_env = tv_dict_get_number(job_opts, "clear_env") != 0;
     if (pty && rpc) {
       EMSG2(_(e_invarg2), "job cannot have both 'pty' and 'rpc' options set");
       shell_free_argv(argv);
@@ -11738,7 +11737,7 @@ static void f_jobstart(typval_T *argvars, typval_T *rettv, FunPtr fptr)
     // or new_env
     item = tv_dict_find(job_opts, S_LEN("env"));
     if (item) {
-      size_t env_size = 0; // len ?
+      size_t env_size = 0;  // len ?
       size_t i = 0;
       // size_t orig_env_size = 0;
       if (item->di_tv.v_type != VAR_DICT) {
@@ -11750,39 +11749,39 @@ static void f_jobstart(typval_T *argvars, typval_T *rettv, FunPtr fptr)
       env_size += (size_t)tv_dict_len(item->di_tv.vval.v_dict);
       ILOG("%d passed env variables", env_size);
 
-      if (!reset_env) {
+      if (!clear_env) {
         char **environ = os_getfullenv();
-        size_t current_env_size = 0; // = strlen(environ); // strlen excludes null byte
+        size_t current_env_size = 0;
         for (env = environ; *env; env++) {
           current_env_size++;
         }
         ILOG("current env_len=%d", current_env_size);
         env_size += current_env_size;
-        env = xmalloc( (env_size) * sizeof(char));
-        for (;i < current_env_size; i++) {
+        env = xmalloc(sizeof(env_size));
+        for (; i < current_env_size; i++) {
             env[i] = xstrdup(environ[i]);
             ILOG("from env: %s (id=%d)", env[i], i);
         }
       } else {
         // + 1 for last null entry
-        env = xmalloc( (env_size + 1) * sizeof(char));
+        env = xmalloc( sizeof(env_size + 1) * sizeof(*env));
       }
       assert(env);  // env should be allocated here
       ILOG("total env_len=%d", env_size);
 
-      // TODO add the following in tv_to_argv  ?
+      // add the following in tv_to_argv  ?
       TV_DICT_ITER(item->di_tv.vval.v_dict, var, {
           // tv_get_string => single buffer vs tv_get_string_buf
           const char *str = tv_get_string(&var->di_tv);
           if (str) {
-            size_t len = STRLEN(var->di_key) + strlen(str) + strlen("=") + 1;
+            size_t len = STRLEN(var->di_key) + strlen(str) + strlen("=");
             ILOG("value #%d: %s", i, str);
-            env[i] = xmallocz(len * sizeof(char));
+            env[i] = xmalloc(sizeof(len));
             snprintf(env[i], len, "%s=%s", (char *)var->di_key, str);
             ILOG("generated string #%d: %s (len %d)", i, env[i], len);
 
           } else {
-            // TODO generate an error
+            // todo generate an error
           }
           i++;
         });
@@ -11807,8 +11806,8 @@ static void f_jobstart(typval_T *argvars, typval_T *rettv, FunPtr fptr)
   }
 
   Channel *chan = channel_job_start(argv, on_stdout, on_stderr, on_exit, pty,
-                                    rpc, detach, cwd, width, height, term_name,
-                                    &rettv->vval.v_number);
+                                    rpc, detach, cwd, width, height,
+                                    env, term_name, &rettv->vval.v_number);
   if (chan) {
     channel_create_event(chan, NULL);
   }
@@ -14045,7 +14044,7 @@ static void f_rpcstart(typval_T *argvars, typval_T *rettv, FunPtr fptr)
 
   Channel *chan = channel_job_start(argv, CALLBACK_READER_INIT,
                                     CALLBACK_READER_INIT, CALLBACK_NONE,
-                                    false, true, false, NULL, 0, 0, NULL,
+                                    false, true, false, NULL, 0, 0, NULL, NULL,
                                     &rettv->vval.v_number);
   if (chan) {
     channel_create_event(chan, NULL);
@@ -16846,7 +16845,7 @@ static void f_termopen(typval_T *argvars, typval_T *rettv, FunPtr fptr)
   Channel *chan = channel_job_start(argv, on_stdout, on_stderr, on_exit,
                                     true, false, false, cwd,
                                     term_width, curwin->w_height,
-                                    xstrdup("xterm-256color"),
+                                    NULL, xstrdup("xterm-256color"),
                                     &rettv->vval.v_number);
   if (rettv->vval.v_number <= 0) {
     return;
