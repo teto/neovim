@@ -56,15 +56,17 @@ describe('jobs', function()
   it('append environment #env', function()
     -- nvim('command', "let $VAR = 'abc'")
     -- , 'tata': 'plop'
-    nvim('command', "let g:job_opts.env = {'TOTO': 'hello world'}")
+-- 'TOTO': 'hello world'
+    nvim('command', "let g:job_opts.env = {}")
     -- if iswin() then
     --   nvim('command', "let j = jobstart('echo $env:VAR', g:job_opts)")
     -- else
       -- nvim('command', "let j = jobstart(['echo', \"$PATH\" ], g:job_opts)")
       -- use -n to remove newline
-      nvim('command', "let j = jobstart('echo $TOTO', g:job_opts)")
+      nvim('command', [[call jobstart('echo toto', g:job_opts)]])
       -- nvim('command', "let j = jobstart(['env', '-i', 'TOTO=hello\ world'], g:job_opts)")
     -- end
+    -- TODO expect_msg_seq(
     eq({'notification', 'stdout', {0, {'hello world', ''}}}, next_msg())
     eq({'notification', 'exit', {0, 0}}, next_msg())
   end)

@@ -11747,47 +11747,71 @@ static void f_jobstart(typval_T *argvars, typval_T *rettv, FunPtr fptr)
       }
 
       // number of items in dict
-      ILOG("%u passed env variables", custom_env_size);
+      ILOG("%lu passed env variables", custom_env_size);
 
-      if (!clear_env) {
-        char **environ = os_getfullenv();
-        for (env = environ; *env; env++) {
+      if (clear_env) {
+        // + 1 for last null entry
+        env = xmalloc(custom_env_size + 1);
+        env_size = 0;
+
+        ILOG("Clearing env");
+      } else {
+        const char **genv = os_getfullenv();
+        for (env = genv; *env; env++) {
           env_size++;
         }
-        ILOG("current env_len=%d", env_size);
-        // env_size += current_env_size;
-        env = xmalloc(custom_env_size + env_size + 1);
-        for (; i < env_size; i++) {
+        ILOG("current env_len=%lu", env_size);
+        ILOG("Allocating=%lu", custom_env_size + env_size + 1);
+        env = (char *)xmalloc(custom_env_size + env_size + 1);
+        ILOG("len(env)=%lu", strlen(env));
+
+        // ILOG("env start %p", env);
+        for (i = 0; i < env_size; i++) {
             env[i] = xstrdup(environ[i]);
-            ILOG("from env: %s (id=%d)", env[i], i);
+            ILOG("from env[id=%lu] at %p:", i, env[i]);
+            ILOG("from env[id=%lu]: %s", i, env[i]);
         }
-      } else {
-        // + 1 for last null entry
-        env = xmalloc(sizeof(custom_env_size + 1));
       }
       assert(env);  // env should be allocated here
       // ILOG("total env_len=%d", env_size);
 
       // add the following in tv_to_argv  ?
-      TV_DICT_ITER(item->di_tv.vval.v_dict, var, {
         // tv_get_string => single buffer vs tv_get_string_buf
+      TV_DICT_ITER(item->di_tv.vval.v_dict, var, {
         const char *str = tv_get_string(&var->di_tv);
         if (str) {
           size_t len = STRLEN(var->di_key) + strlen(str) + strlen("=");
-          ILOG("value #%u: %s", i, str);
-          env[i] = xmalloc(sizeof(len));
+          ILOG("value #%lu: %s", i, str);
+          env[i] = xmallocz(len);
           snprintf(env[i], len, "%s=%s", (char *)var->di_key, str);
-          ILOG("generated string #%u: %s (len %d)", i, env[i], len);
+          ILOG("generated string #%lu: %s (len %lu)", i, env[i], len);
 
         } else {
           // todo generate an error
+          ILOG("ERROR: Empty str");
         }
         i++;
       });
+
       // must be null terminated
-      ILOG("Appending null at id=%d", env_size);
+      ILOG("Appending null at id=%lu", env_size + custom_env_size);
       env[env_size + custom_env_size] = NULL;
+
+      ILOG("Starting dumping env");
+      i = 0;
+      for (char **temp = env; ; temp++) {
+        ILOG("resulting env (run %lu) %p", i, *temp);
+        ILOG("resulting env (run %lu) %s", i, *temp);
+        if (*temp == NULL) {
+            ILOG("Null breaking out\n");
+            break;
+        }
+
+        i++;
+      }
+      ILOG("ended dumping env\n");
     }
+
 
     if (!common_job_callbacks(job_opts, &on_stdout, &on_stderr, &on_exit)) {
       shell_free_argv(argv);
@@ -11803,6 +11827,10 @@ static void f_jobstart(typval_T *argvars, typval_T *rettv, FunPtr fptr)
     height = (uint16_t)tv_dict_get_number(job_opts, "height");
     term_name = tv_dict_get_string(job_opts, "TERM", true);
   }
+
+  // hack
+  // env = os_getfullenv();
+  // ILOG("env end %p", env);
 
   Channel *chan = channel_job_start(argv, on_stdout, on_stderr, on_exit, pty,
                                     rpc, detach, cwd, width, height,
