@@ -19,6 +19,7 @@ local nvim_set = helpers.nvim_set
 local expect_twostreams = helpers.expect_twostreams
 local expect_msg_seq = helpers.expect_msg_seq
 local pcall_err = helpers.pcall_err
+local expect_err = helpers.expect_err
 local Screen = require('test.functional.ui.screen')
 
 describe('jobs', function()
@@ -26,6 +27,9 @@ describe('jobs', function()
 
   before_each(function()
     clear()
+
+    assert:set_parameter('TableFormatLevel', 1000000)
+
     channel = nvim('get_api_info')[1]
     nvim('set_var', 'channel', channel)
     source([[
@@ -46,6 +50,25 @@ describe('jobs', function()
     \ 'user': 0
     \ }
     ]])
+  end)
+
+  it('append environment #env', function()
+    nvim('command', "let g:job_opts.env = {'TOTO': 'hello world'}")
+    nvim('command', [[call jobstart('echo $TOTO', g:job_opts)]])
+
+    expect_msg_seq({
+      {'notification', 'stdout', {0, {'hello world', ''}}},
+    })
+  end)
+
+  it('replace environment #env', function()
+    nvim('command', "let g:job_opts.env = {'TOTO': 'hello world'}")
+    nvim('command', "let g:job_opts.clear_env = 1")
+    nvim('command', [[let j= jobstart(['env'], g:job_opts)]])
+
+    expect_msg_seq({
+      {'notification', 'stdout', {0, {'TOTO=hello world', ''}}}
+    })
   end)
 
   it('uses &shell and &shellcmdflag if passed a string', function()
