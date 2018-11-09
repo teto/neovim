@@ -17,7 +17,6 @@ local pathroot = helpers.pathroot
 local nvim_set = helpers.nvim_set
 local expect_twostreams = helpers.expect_twostreams
 local expect_msg_seq = helpers.expect_msg_seq
-local expect_err = helpers.expect_err
 local Screen = require('test.functional.ui.screen')
 
 -- Kill process with given pid
@@ -32,6 +31,9 @@ describe('jobs', function()
 
   before_each(function()
     clear()
+
+    assert:set_parameter('TableFormatLevel', 1000000)
+
     channel = nvim('get_api_info')[1]
     nvim('set_var', 'channel', channel)
     source([[
@@ -52,6 +54,25 @@ describe('jobs', function()
     \ 'user': 0
     \ }
     ]])
+  end)
+
+  it('append environment #env', function()
+    nvim('command', "let g:job_opts.env = {'TOTO': 'hello world'}")
+    nvim('command', [[call jobstart('echo $TOTO', g:job_opts)]])
+
+    expect_msg_seq({
+      {'notification', 'stdout', {0, {'hello world', ''}}},
+    })
+  end)
+
+  it('replace environment #env', function()
+    nvim('command', "let g:job_opts.env = {'TOTO': 'hello world'}")
+    nvim('command', "let g:job_opts.clear_env = 1")
+    nvim('command', [[let j= jobstart(['env'], g:job_opts)]])
+
+    expect_msg_seq({
+      {'notification', 'stdout', {0, {'TOTO=hello world', ''}}}
+    })
   end)
 
   it('uses &shell and &shellcmdflag if passed a string', function()
@@ -114,17 +135,6 @@ describe('jobs', function()
       end
     end)
     ok(string.find(err, "E475: Invalid argument: expected valid directory$") ~= nil)
-  end)
-
-  it('produces error when using non-executable `cwd`', function()
-    if iswin() then return end  -- N/A for Windows
-
-    local dir = 'Xtest_not_executable_dir'
-    mkdir(dir)
-    funcs.setfperm(dir, 'rw-------')
-    expect_err('E475: Invalid argument: expected valid directory$', nvim,
-               'command', "call jobstart('pwd', {'cwd': '" .. dir .. "'})")
-    rmdir(dir)
   end)
 
   it('returns 0 when it fails to start', function()
