@@ -272,11 +272,20 @@ static void close_cb(Stream *stream, void *data)
   channel_decref(data);
 }
 
+static inline void free_env(char **env)
+{
+  for (char **it = env; *it; it++) {
+    xfree(*it);
+  }
+  xfree(env);
+}
+
+
 Channel *channel_job_start(char **argv, CallbackReader on_stdout,
                            CallbackReader on_stderr, Callback on_exit,
                            bool pty, bool rpc, bool detach, const char *cwd,
                            uint16_t pty_width, uint16_t pty_height,
-                           char *term_name, varnumber_T *status_out)
+                           char **env, char *term_name, varnumber_T *status_out)
 {
   assert(cwd == NULL || os_isdir_executable(cwd));
 
@@ -314,6 +323,7 @@ Channel *channel_job_start(char **argv, CallbackReader on_stdout,
   proc->events = chan->events;
   proc->detach = detach;
   proc->cwd = cwd;
+  proc->env = env;
 
   char *cmd = xstrdup(proc->argv[0]);
   bool has_out, has_err;
@@ -328,6 +338,7 @@ Channel *channel_job_start(char **argv, CallbackReader on_stdout,
   if (status) {
     EMSG3(_(e_jobspawn), os_strerror(status), cmd);
     xfree(cmd);
+    free_env(proc->env);
     if (proc->type == kProcessTypePty) {
       xfree(chan->stream.pty.term_name);
     }
@@ -336,6 +347,8 @@ Channel *channel_job_start(char **argv, CallbackReader on_stdout,
     return NULL;
   }
   xfree(cmd);
+  free_env(proc->env);
+
 
   wstream_init(&proc->in, 0);
   if (has_out) {
