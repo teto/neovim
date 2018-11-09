@@ -148,7 +148,7 @@ int os_unsetenv(const char *name)
   return r == 0 ? 0 : -1;
 }
 
-char *os_getenvname_at_index(size_t index)
+char **os_getfullenv(void)
 {
 #ifdef _WIN32
   wchar_t *env = GetEnvironmentStringsW();
@@ -188,8 +188,14 @@ char *os_getenvname_at_index(size_t index)
 # else
   extern char         **environ;
 # endif
-  // Check if index is inside the environ array and is not the last element.
-  for (size_t i = 0; i <= index; i++) {
+  return environ;
+}
+
+char *os_getenvname_at_index(size_t index)
+{
+  char **environ = os_getfullenv();
+  // check if index is inside the environ array
+  for (size_t i = 0; i < index; i++) {
     if (environ[i] == NULL) {
       return NULL;
     }
