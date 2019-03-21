@@ -274,6 +274,7 @@ static void close_cb(Stream *stream, void *data)
 
 static inline void free_env(char **env)
 {
+  if (!env) { return; }
   for (char **it = env; *it; it++) {
     xfree(*it);
   }
