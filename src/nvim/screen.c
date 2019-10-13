@@ -2706,6 +2706,7 @@ win_line (
         }
       }
 
+      // foldcolumn
       if (draw_state == WL_FOLD - 1 && n_extra == 0) {
         int fdc = compute_foldcolumn(wp, 0);
 
@@ -2722,6 +2723,11 @@ win_line (
           c_extra = NUL;
           c_final = NUL;
           char_attr = win_hl_attr(wp, HLF_FC);
+        }
+
+        sign_idx++;
+        if (sign_idx < count) {
+            draw_state = WL_SIGN - 1;
         }
       }
 

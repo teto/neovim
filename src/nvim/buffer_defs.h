@@ -1211,13 +1211,12 @@ struct window_S {
   int w_lines_valid;                /* number of valid entries */
   wline_T     *w_lines;
 
-  garray_T w_folds;                 /* array of nested folds */
-  bool w_fold_manual;               /* when true: some folds are opened/closed
-                                       manually */
-  bool w_foldinvalid;               /* when true: folding needs to be
-                                       recomputed */
-  int w_nrwidth;                    /* width of 'number' and 'relativenumber'
-                                       column being used */
+  garray_T w_folds;         ///< array of nested folds
+  bool w_fold_manual;       ///< when true: some folds are open/closed manually
+  bool w_foldinvalid;       ///< when true: folding needs to be recomputed
+  // int w_fdcwidth;           ///< optimal width to draw 'foldcolumn'
+  int w_nrwidth;            ///< width of 'number' and 'relativenumber'
+                            ///< column being used
 
   /*
    * === end of cached values ===
@@ -1330,7 +1329,7 @@ struct window_S {
   qf_info_T   *w_llist_ref;
 };
 
-static inline int win_hl_attr(win_T *wp, int hlf)
+static inline int win_hl_attr(const win_T *const wp, int hlf)
 {
   return wp->w_hl_attrs[hlf];
 }

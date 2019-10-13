@@ -844,6 +844,22 @@ EXTERN int cmdwin_type INIT(= 0);    ///< type of cmdline window or 0
 EXTERN int cmdwin_result INIT(= 0);  ///< result of cmdline window or 0
 EXTERN int cmdwin_level INIT(= 0);   ///< cmdline recursion level
 
+/// enum to identify character
+/// order matters as it used to prioritize some symbols over others
+typedef enum {
+  kFoldOpenMid,     ///< vertical sep
+  kFoldOpenStart,   ///< Mark the start of an open fold
+  kFoldOpenLast,    ///< Mark the last line of an open fold
+  kFoldClosed       ///< Show a closed fold
+} kFoldChar;
+
+EXTERN int fold_chars[] INIT(= {
+  '|',     // kFoldOpenMid
+  '-',     // kFoldOpenStart
+  9492,    // kFoldOpenLast └
+  '+'      // kFoldClosed
+});
+
 EXTERN char_u no_lines_msg[] INIT(= N_("--No lines in buffer--"));
 
 /*
