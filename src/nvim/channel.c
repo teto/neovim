@@ -279,6 +279,7 @@ Channel *channel_job_start(char **argv, CallbackReader on_stdout,
                            char *term_name, varnumber_T *status_out)
 {
   assert(cwd == NULL || os_isdir_executable(cwd));
+  DLOG("Channel job start in cwd=%s", cwd);
 
   Channel *chan = channel_alloc(kChannelStreamProc);
   chan->on_data = on_stdout;
@@ -296,6 +297,7 @@ Channel *channel_job_start(char **argv, CallbackReader on_stdout,
     }
     chan->stream.pty = pty_process_init(&main_loop, chan);
     if (pty_width > 0) {
+      DLOG("pty_width > 0");
       chan->stream.pty.width = pty_width;
     }
     if (pty_height > 0) {
@@ -324,6 +326,7 @@ Channel *channel_job_start(char **argv, CallbackReader on_stdout,
     has_out = rpc || callback_reader_set(chan->on_data);
     has_err = callback_reader_set(chan->on_stderr);
   }
+  DLOG("cmd argv=[%s]", proc->argv[0], *proc->argv);
   int status = process_spawn(proc, true, has_out, has_err);
   if (status) {
     EMSG3(_(e_jobspawn), os_strerror(status), cmd);

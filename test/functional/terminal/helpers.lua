@@ -42,6 +42,8 @@ local function screen_setup(extra_rows, command, cols, opts)
   command = command and command or default_command
   cols = cols and cols or 50
 
+  print("Running command: ".. command)
+  print(command)
   nvim('command', 'highlight TermCursor cterm=reverse')
   nvim('command', 'highlight TermCursorNC ctermbg=11')
 
