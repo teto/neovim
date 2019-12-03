@@ -562,6 +562,8 @@ if(BUSTED_PRG)
   set(UNITTEST_PREREQS nvim-test unittest-headers)
   set(FUNCTIONALTEST_PREREQS nvim printenv-test printargs-test shell-test streams-test tty-test ${GENERATED_HELP_TAGS})
   set(BENCHMARK_PREREQS nvim tty-test)
+  # ${GENERATED_HELP_TAGS})
+  set(OLDTEST_PREREQS nvim )
 
   # Useful for automated build systems, if they want to manually run the tests.
   add_custom_target(unittest-prereqs
@@ -573,6 +575,9 @@ if(BUSTED_PRG)
 
   add_custom_target(benchmark-prereqs
     DEPENDS ${BENCHMARK_PREREQS})
+
+  add_custom_target(oldtest-prereqs
+    DEPENDS ${OLDTEST_PREREQS})
 
   check_lua_module(${LUA_PRG} "ffi" LUA_HAS_FFI)
   if(LUA_HAS_FFI)
@@ -620,6 +625,26 @@ if(BUSTED_PRG)
     ${TEST_TARGET_ARGS})
   set_target_properties(functionaltest functionaltest-prereqs
     PROPERTIES FOLDER test)
+
+  # +$(SINGLE_MAKE) -C src/nvim/testdir NVIM_PRG="$(realpath build/bin/nvim)" $(MAKEOVERRIDES)
+  add_custom_target(oldtest
+    COMMAND make -C ${PROJECT_SOURCE_DIR}/src/nvim/testdir
+    NVIM_PRG=$<TARGET_FILE:nvim>
+    # COMMAND ${CMAKE_COMMAND}
+    #   -DLUA_PRG=${LUA_PRG}
+    #   -DNVIM_PRG=$<TARGET_FILE:nvim>
+    #   -DWORKING_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+    #   -DTEST_DIR=${CMAKE_CURRENT_SOURCE_DIR}/test
+    #   -DBUILD_DIR=${CMAKE_BINARY_DIR}
+    #   -DTEST_TYPE=oldtest
+    #   -P ${PROJECT_SOURCE_DIR}/cmake/RunTests.cmake
+
+      # DEPENDS ${OLDTEST_PREREQS}
+
+    # ${TEST_TARGET_ARGS}
+    )
+  # set_target_properties(oldtest oldtest-prereqs
+  #   PROPERTIES FOLDER test)
 
   add_custom_target(benchmark
     COMMAND ${CMAKE_COMMAND}
