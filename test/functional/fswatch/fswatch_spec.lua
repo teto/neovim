@@ -1,8 +1,9 @@
 -- Test suite for libuv notifications (may depend on filesystem)
-local helpers = require('test.functional.helpers')(after_each)
+-- local fn_helpers = require('test.functional.helpers')(after_each)
+local helpers = require('test.unit.helpers')(after_each)
 local Screen = require('test.functional.ui.screen')
 -- 
-local fs = require('fswatch')
+-- local fs = require('vim.fswatch')
 local funcs = helpers.funcs
 local meths = helpers.meths
 local command = helpers.command
@@ -17,7 +18,18 @@ local source = helpers.source
 local NIL = helpers.NIL
 local retry = helpers.retry
 
--- local fs = cimport('./src/nvim/os/os.h', './src/nvim/path.h')
+local cimport = helpers.cimport
+local ffi = require('ffi')
+
+-- cimport('./src/nvim/os/shell.h')
+-- cimport('./src/nvim/option_defs.h')
+-- cimport('./src/nvim/main.h')
+-- cimport('./src/nvim/fileio.h')
+cimport('./src/nvim/os/os.h')
+-- , './src/nvim/path.h')
+-- cppimport('sys/stat.h')
+-- cppimport('fcntl.h')
+-- cimport('uv.h')
 
 before_each(clear)
 
@@ -35,13 +47,13 @@ local function file_id_new()
   return info
 end
 
-      itp('returns true if given an existing file and fills file_id', function()
-        local file_id = file_id_new()
-        local path = 'unit-test-directory/test.file'
-        assert.is_true((fs.os_fileid(path, file_id)))
-        assert.is_true(0 < file_id[0].inode)
-        assert.is_true(0 < file_id[0].device_id)
-      end)
+  -- itp('returns true if given an existing file and fills file_id', function()
+  --   local file_id = file_id_new()
+  --   local path = 'unit-test-directory/test.file'
+  --   assert.is_true((fs.os_fileid(path, file_id)))
+  --   assert.is_true(0 < file_id[0].inode)
+  --   assert.is_true(0 < file_id[0].device_id)
+  -- end)
 
 -- -- reuse for instance
 -- describe('os_fileinfo_inode', function()
@@ -69,6 +81,10 @@ describe('file watcher', function()
     command('write')
     -- replace with command
     -- fs.watch_file()
+    exec_lua([[
+        fs = require('vim.fswatch')
+
+    ]])
     command('Watch Xtest-foo')
 
     local file = io.open("Xtest-foo", 'w')

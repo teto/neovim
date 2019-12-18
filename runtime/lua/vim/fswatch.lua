@@ -4,8 +4,10 @@
 -- 5. Observe that the file reloads in Nvim (because on_change() calls
 --    |:checktime|). >
 -- if for a folderm then we need sthg else
-
 local vim = vim
+local nvim_err_writeln, nvim_buf_get_lines, nvim_command, nvim_buf_get_option
+  = vim.api.nvim_err_writeln, vim.api.nvim_buf_get_lines, vim.api.nvim_command, vim.api.nvim_buf_get_option
+local uv = vim.loop
 
 
 local w = vim.loop.new_fs_event()
@@ -29,3 +31,5 @@ end
 vim.api.nvim_command(
 	"command! -nargs=1 Watch call luaeval('watch_file(_A)', expand('<args>'))")
 
+-- return {
+-- }
