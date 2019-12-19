@@ -1,8 +1,11 @@
 -- Test suite for libuv notifications (may depend on filesystem)
--- local fn_helpers = require('test.functional.helpers')(after_each)
-local helpers = require('test.unit.helpers')(after_each)
+local helpers = require('test.functional.helpers')(after_each)
+
+-- local lfs = require('lfs')
+-- local bit = require('bit')
+
+local uhelpers = require('test.unit.helpers')(after_each)
 local Screen = require('test.functional.ui.screen')
--- 
 -- local fs = require('vim.fswatch')
 local funcs = helpers.funcs
 local meths = helpers.meths
@@ -18,8 +21,8 @@ local source = helpers.source
 local NIL = helpers.NIL
 local retry = helpers.retry
 
-local cimport = helpers.cimport
-local ffi = require('ffi')
+local cimport = uhelpers.cimport
+local ffi = uhelpers.ffi
 
 -- cimport('./src/nvim/os/shell.h')
 -- cimport('./src/nvim/option_defs.h')
