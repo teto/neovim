@@ -1,15 +1,15 @@
 -- Test suite for libuv notifications (may depend on filesystem)
 local helpers = require('test.functional.helpers')(after_each)
 
--- local lfs = require('lfs')
--- local bit = require('bit')
 
 local uhelpers = require('test.unit.helpers')(after_each)
 local Screen = require('test.functional.ui.screen')
+
 -- local fs = require('vim.fswatch')
 local funcs = helpers.funcs
 local meths = helpers.meths
 local command = helpers.command
+local insert = helpers.insert
 local clear = helpers.clear
 local eq = helpers.eq
 local eval = helpers.eval
