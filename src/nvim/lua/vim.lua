@@ -274,6 +274,9 @@ local function __index(t, key)
   elseif key == 'lsp' then
     t.lsp = require('vim.lsp')
     return t.lsp
+  elseif key == 'fswatch' then
+    t.fswatch = require('vim.fswatch')
+    return t.fswatch
   end
 end
 
