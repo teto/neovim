@@ -261,6 +261,7 @@ vim.fn = setmetatable({}, {
 -- These are for loading runtime modules lazily since they aren't available in
 -- the nvim binary as specified in executor.c
 local function __index(t, key)
+  -- print("Lazy loading")
   if key == 'inspect' then
     t.inspect = require('vim.inspect')
     return t.inspect
