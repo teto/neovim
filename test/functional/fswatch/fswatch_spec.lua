@@ -22,6 +22,7 @@ local retry = helpers.retry
 
 local cimport = uhelpers.cimport
 local ffi = uhelpers.ffi
+local itp = uhelpers.gen_itp(it)
 
 -- cimport('./src/nvim/os/shell.h')
 -- cimport('./src/nvim/option_defs.h')
@@ -32,13 +33,6 @@ local ffi = uhelpers.ffi
 local fs = cimport('./src/nvim/os/os.h', './src/nvim/path.h')
 
 before_each(clear)
-
-local function file_id_new()
-  local info = ffi.new('FileID[1]')
-  info[0].inode = 0
-  info[0].device_id = 0
-  return info
-end
 
   -- itp('returns true if given an existing file and fills file_id', function()
   --   local file_id = file_id_new()
@@ -59,11 +53,37 @@ end
 --   end)
 -- end)
 
--- some inspiration from test/unit/os/fs_spec.lua
 describe('file watcher', function()
-  it('file external modification', function()
+
+
+  -- some inspiration from test/unit/os/fs_spec.lua
+  -- some copy/paste too
+  -- local function file_info_new()
+  --   local info = ffi.new('FileInfo[1]')
+  --   info[0].stat.st_ino = 0
+  --   info[0].stat.st_dev = 0
+  --   return info
+  -- end
+
+  --   -- Returns true if the FileInfo object has non-empty fields.
+  --   local function has_fileinfo(info)
+  --     return info[0].stat.st_ino > 0 and info[0].stat.st_dev > 0
+  --   end
+
+    local function file_id_new()
+      local info = ffi.new('FileID[1]')
+      info[0].inode = 0
+      info[0].device_id = 0
+      return info
+    end
+
+  -- it('file external modification', function()
+  itp('file external modification', function()
+    print("STARTING ITP")
+
 
     local file_id = file_id_new()
+    local path = 'Xtest-foo'
     -- local env = {XDG_DATA_HOME='Xtest-userdata', XDG_CONFIG_HOME='Xtest-userconfig'}
     -- clear{args={}, args_rm={'-i'}, env=env}
     local screen = Screen.new(3, 8)
@@ -86,13 +106,24 @@ describe('file watcher', function()
       "line3",
       "line4",
     }
+    local file_id = file_id_new()
     for id, new_content in pairs(expected_additions) do
       -- local new_content = expected_additions[i]
-      assert.is_true((fs.os_fileinfo(path, info)))
-      local inode = fs.os_fileinfo_inode(info)
-      print(new_content)
+      assert.is_true((fs.os_fileid(path, file_id)))
+
+      -- fs.os_fileinfo(path, info)
+      io.stderr:write("hello world\n")
+      -- print("INFo")
+      -- io.stdout:write(tostring("toto"))
+      -- deprecated
+      -- local inode = fs.os_fileinfo_inode(info)
+      io.stderr:write("inode"..tostring(file_id[0].inode).."\n")
+      -- io.stderr:write(tostring(info[0].inode))
+      -- io.stderr:write(new_content)
       file:write("\n", new_content)
       file:flush()
+      --  or instead let it be rewritten
+      os.execute("sleep " .. tonumber(1))
       screen:expect({any = new_content})
       -- i = i + 1
     end
