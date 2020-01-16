@@ -254,6 +254,47 @@ static void buf_clear_luahl(buf_T *buf, bool force)
   buf->b_luahl_end = LUA_NOREF;
 }
 
+
+// pass a dict { 'watch' }
+void nvim__buf_set_watcher(uint64_t channel_id, Buffer buffer,
+                         DictionaryOf(LuaRef) opts, Error *err)
+  FUNC_API_LUA_ONLY
+{
+  buf_T *buf = find_buffer_by_handle(buffer, err);
+
+  if (!buf) {
+    return;
+  }
+
+  // kObjectTypeDictionary
+  for (size_t i = 0; i < opts.size; i++) {
+    String k = opts.items[i].key;
+    Object *v = &opts.items[i].value;
+    if (strequal("watch", k.data)) {
+      if (v->type != kObjectTypeLuaRef) {
+        api_set_error(err, kErrorTypeValidation, "callback is not a function");
+        goto error;
+      }
+      buf->b_luafd_watcher = v->data.luaref;
+      v->data.luaref = LUA_NOREF;
+    // }
+    // else if (strequal("stop", k.data)) {
+    //   if (v->type != kObjectTypeLuaRef) {
+    //     api_set_error(err, kErrorTypeValidation, "callback is not a function");
+    //     goto error;
+    //   }
+    //   buf->b_luafd_stop = v->data.luaref;
+    //   v->data.luaref = LUA_NOREF;
+    } else {
+      api_set_error(err, kErrorTypeValidation, "unexpected key: %s", k.data);
+      goto error;
+    }
+  }
+  return;
+error:
+  buf->b_luafd_watcher = false;
+}
+
 /// Unstabilized interface for defining syntax hl in lua.
 ///
 /// This is not yet safe for general use, lua callbacks will need to

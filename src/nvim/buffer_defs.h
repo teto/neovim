@@ -841,6 +841,9 @@ struct file_buffer {
   LuaRef b_luahl_line;
   LuaRef b_luahl_end;
 
+  // file watcher provider
+  LuaRef b_luafd_watcher;
+
   int b_diff_failed;    // internal diff failed for this buffer
 };
 

@@ -58,6 +58,7 @@
 #include "nvim/os/os_defs.h"
 #include "nvim/os/time.h"
 #include "nvim/os/input.h"
+#include "nvim/os/fswatcher.h"
 
 #define BUFSIZE         8192    /* size of normal write buffer */
 #define SMBUFSIZE       256     /* size of emergency write buffer */
@@ -2182,22 +2183,22 @@ static void check_marks_read(void)
   curbuf->b_marks_read = true;
 }
 
-/*
- * buf_write() - write to file "fname" lines "start" through "end"
- *
- * We do our own buffering here because fwrite() is so slow.
- *
- * If "forceit" is true, we don't care for errors when attempting backups.
- * In case of an error everything possible is done to restore the original
- * file.  But when "forceit" is TRUE, we risk losing it.
- *
- * When "reset_changed" is TRUE and "append" == FALSE and "start" == 1 and
- * "end" == curbuf->b_ml.ml_line_count, reset curbuf->b_changed.
- *
- * This function must NOT use NameBuff (because it's called by autowrite()).
- *
- * return FAIL for failure, OK otherwise
- */
+/// buf_write() - write to file "fname" lines "start" through "end"
+///
+/// We do our own buffering here because fwrite() is so slow.
+///
+/// @param "forceit" is true, we don't care for errors when attempting backups.
+/// In case of an error everything possible is done to restore the original
+/// file.  But when "forceit" is TRUE, we risk losing it.
+///
+/// @param fname fullname
+/// @param sfname Shortr filename can be NULL
+/// @param reset_changed is TRUE and "append" == FALSE and "start" == 1 and
+/// "end" == curbuf->b_ml.ml_line_count, reset curbuf->b_changed.
+///
+/// This function must NOT use NameBuff (because it's called by autowrite()).
+///
+/// @return FAIL for failure, OK otherwise
 int
 buf_write(
     buf_T *buf,
@@ -2963,6 +2964,7 @@ nobackup:
           // If the renaming of the original file to the backup file
           // works, quit here.
           ///
+          watcher_stop(buf);
           if (vim_rename(fname, backup) == 0) {
             break;
           }

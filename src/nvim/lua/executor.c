@@ -1006,6 +1006,12 @@ void ex_luado(exarg_T *const eap)
   update_screen(NOT_VALID);
 }
 
+bool lua_has_provider(const char *feat) {
+  lua_State *const lstate = nlua_enter();
+  // Pushes onto the stack the value of the global name. Returns the type of that value.
+  lua_getglobal(lstate, feat);
+}
+
 /// Run lua file
 ///
 /// Used for :luafile.

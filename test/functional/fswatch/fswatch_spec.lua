@@ -91,7 +91,8 @@ describe('file watcher', function()
     command('edit Xtest-foo')
     insert([[aa bb]])
     command('write')
-
+    -- TODO use instead
+    -- nvim__buf_set_watcher(0, { 'watch': watch})
     exec_lua( "vim.fswatch.watch_buffer(0)")
     -- print("res: "..res)
     -- actual message depends on platform
