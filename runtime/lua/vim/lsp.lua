@@ -793,6 +793,15 @@ function lsp.get_active_clients()
   return vim.tbl_values(active_clients)
 end
 
+--- Gets all defined clients.
+---
+--@return Table of |vim.lsp.client| objects
+function lsp.get_active_clients()
+  -- Return a list of all values used in a table. However, the
+  --   uninitialized_clients
+  return vim.tbl_values(active_clients)
+end
+
 function lsp._vim_exit_handler()
   log.info("exit_handler", active_clients)
   for _, client in pairs(uninitialized_clients) do

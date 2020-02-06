@@ -10,7 +10,7 @@ local log = require 'vim.lsp.log'
 -- local uv = vim.loop
 
 
--- local w = vim.loop.new_fs_event()
+local w = vim.loop.new_fs_event()
 
 -- vim.api.nvim_command(
 -- 	"command! -nargs=1 Watch call luaeval('watch_file(_A)', expand('<args>'))")
@@ -44,7 +44,7 @@ function M.on_change(err, fname, status)
     a.nvim_command('checktime')
     -- Debounce: stop/start.
     w:stop()
-    watch_file(fname)
+    M.watch_file(fname)
 end
 
 
@@ -65,9 +65,11 @@ function M.watch_buffer(bufnr)
 end
 
 function M.watch_file(fname)
-  -- print("WATCH FILE CALLED")
+  print("WATCH FILE CALLED")
+  log.info("Watching file")
   local fullpath = a.nvim_call_function('fnamemodify', {fname, ':p'})
 
+  log.info("Watching file fullname "..fname)
   local w = vim.loop.new_fs_event()
   if not w then
     error("Could not create loop")
