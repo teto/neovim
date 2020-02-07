@@ -907,6 +907,31 @@ function M.trim_empty_lines(lines)
   return vim.list_extend({}, lines, start, finish)
 end
 
+-- Parse a command given either as a string or list
+--
+-- Returns: a tuple (executable, arguments)
+local function validate_command(input)
+  local cmd, cmd_args
+  if type(input) == 'string' then
+    -- Use a shell to execute the command if it is a string.
+    cmd = vim.api.nvim_get_option('shell')
+    cmd_args = {vim.api.nvim_get_option('shellcmdflag'), input}
+  elseif vim.tbl_islist(input) then
+    cmd = input[1]
+    cmd_args = {}
+    -- Don't mutate our input.
+    for i, v in ipairs(input) do
+      assert(type(v) == 'string', "input arguments must be strings")
+      if i > 1 then
+        table.insert(cmd_args, v)
+      end
+    end
+  else
+    error("cmd type must be string or list.")
+  end
+  return cmd, cmd_args
+end
+
 -- Accepts markdown lines and tries to reduce it to a filetype if it is
 -- just a single code block.
 -- Note: This modifies the input.

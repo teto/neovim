@@ -41,6 +41,7 @@ local function resolve_bufnr(bufnr)
 end
 
 local function is_dir(filename)
+  -- print("filename", filename)
   validate{filename={filename,'s'}}
   local stat = uv.fs_stat(filename)
   return stat and stat.type == 'directory' or false
@@ -145,7 +146,7 @@ local function optional_validator(fn)
   end
 end
 
-local function validate_client_config(config)
+function lsp.validate_client_config(config)
   validate {
     config = { config, 't' };
   }
@@ -348,7 +349,7 @@ end
 --- delay (or never if there is an error). Use `on_init` to do any actions once
 --- the client has been initialized.
 function lsp.start_client(config)
-  local cleaned_config = validate_client_config(config)
+  local cleaned_config = lsp.validate_client_config(config)
   local cmd, cmd_args, offset_encoding = cleaned_config.cmd, cleaned_config.cmd_args, cleaned_config.offset_encoding
 
   local client_id = next_client_id()
@@ -796,10 +797,14 @@ end
 --- Gets all defined clients.
 ---
 --@return Table of |vim.lsp.client| objects
-function lsp.get_active_clients()
+function lsp.get_all_clients()
   -- Return a list of all values used in a table. However, the
   --   uninitialized_clients
-  return vim.tbl_values(active_clients)
+  return vim.tbl_extend(
+    "error",
+    vim.tbl_values(active_clients),
+    vim.tbl_values(uninitialized_clients)
+  )
 end
 
 function lsp._vim_exit_handler()
