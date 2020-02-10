@@ -73,6 +73,17 @@ describe('jobs', function()
     expect_msg_seq({
       {'notification', 'stdout', {0, {'hello world abc', ''}}},
     })
+
+    -- now with pty set
+    nvim('command', "let g:job_opts.pty = v:true")
+    if iswin() then
+      nvim('command', [[call jobstart('echo %TOTO% %VAR%', g:job_opts)]])
+    else
+      nvim('command', [[call jobstart('echo $TOTO $VAR', g:job_opts)]])
+    end
+    expect_msg_seq({
+      {'notification', 'stdout', {0, {'hello world abc', ''}}},
+    })
   end)
 
   it('replace environment #env', function()

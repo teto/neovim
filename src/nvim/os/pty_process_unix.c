@@ -157,6 +157,7 @@ static void init_child(PtyProcess *ptyproc)
   // New session/process-group. #6530
   setsid();
 
+  // TODO instead remove this from proc->env ?
   os_unsetenv("COLUMNS");
   os_unsetenv("LINES");
   os_unsetenv("TERMCAP");
@@ -178,7 +179,7 @@ static void init_child(PtyProcess *ptyproc)
 
   char *prog = ptyproc->process.argv[0];
   os_setenv("TERM", ptyproc->term_name ? ptyproc->term_name : "ansi", 1);
-  execvp(prog, ptyproc->process.argv);
+  execvpe(prog, proc->argv, proc->env);
   ELOG("execvp failed: %s: %s", strerror(errno), prog);
   _exit(122);  // 122 is EXEC_FAILED in the Vim source.
 }
