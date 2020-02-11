@@ -272,6 +272,41 @@ void os_copy_fullenv(char **env, size_t env_size)
 #endif
 }
 
+
+char **localenv_to_dict(char **env)
+{
+    if (clear_env) {
+    for( char *value = env[0]; value++; ) {
+
+    }
+
+}
+
+/// Converts a dict to an environment
+///
+///
+char **dict_to_env(dict_T *denv)
+{
+  size_t custom_env_size = (size_t)tv_dict_len(denv);
+  size_t i = 0;
+  size_t env_size = 0;
+  char **env;
+
+  env = xmalloc((custom_env_size + 1) * sizeof(*env));
+
+  TV_DICT_ITER(denv, var, {
+    const char *str = tv_get_string(&var->di_tv);
+    assert(str);
+    size_t len = STRLEN(var->di_key) + strlen(str) + strlen("=") + 1;
+    env[i] = xmalloc(len);
+    snprintf(env[i], len, "%s=%s", (char *)var->di_key, str);
+    i++;
+  });
+
+  // must be null terminated
+  env[env_size + custom_env_size] = NULL;
+}
+
 /// Copy value of the environment variable at `index` in the current
 /// environment variables block.
 /// Result must be freed by the caller.

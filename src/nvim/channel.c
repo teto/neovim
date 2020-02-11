@@ -304,7 +304,7 @@ Channel *channel_job_start(char **argv, CallbackReader on_stdout,
                            CallbackReader on_stderr, Callback on_exit,
                            bool pty, bool rpc, bool detach, const char *cwd,
                            uint16_t pty_width, uint16_t pty_height,
-                           char *term_name, char **env, varnumber_T *status_out)
+                           char *term_name, dict_T env, varnumber_T *status_out)
 {
   assert(cwd == NULL || os_isdir_executable(cwd));
 
@@ -357,7 +357,8 @@ Channel *channel_job_start(char **argv, CallbackReader on_stdout,
   if (status) {
     EMSG3(_(e_jobspawn), os_strerror(status), cmd);
     xfree(cmd);
-    os_free_fullenv(proc->env);
+    // TODO free the dict
+    // os_free_fullenv(proc->env);
     if (proc->type == kProcessTypePty) {
       xfree(chan->stream.pty.term_name);
     }
@@ -366,6 +367,8 @@ Channel *channel_job_start(char **argv, CallbackReader on_stdout,
     return NULL;
   }
   xfree(cmd);
+  // os_free_fullenv(proc->env);
+  // TODO free dict too
   os_free_fullenv(proc->env);
 
 
