@@ -154,6 +154,8 @@ void pty_process_teardown(Loop *loop)
 static void init_child(PtyProcess *ptyproc)
   FUNC_ATTR_NONNULL_ALL
 {
+  char **env = NULL;
+
   // New session/process-group. #6530
   setsid();
 
@@ -177,9 +179,14 @@ static void init_child(PtyProcess *ptyproc)
     return;
   }
 
+  if (proc->env) {
+    // TODO move the env massaging here
+    env = tv_dict_to_env(proc->env);
+
+  }
   char *prog = ptyproc->process.argv[0];
   os_setenv("TERM", ptyproc->term_name ? ptyproc->term_name : "ansi", 1);
-  execvpe(prog, proc->argv, proc->env);
+  execvpe(prog, proc->argv, env);
   ELOG("execvp failed: %s: %s", strerror(errno), prog);
   _exit(122);  // 122 is EXEC_FAILED in the Vim source.
 }

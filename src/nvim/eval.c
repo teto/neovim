@@ -12582,7 +12582,7 @@ static void f_jobstart(typval_T *argvars, typval_T *rettv, FunPtr fptr)
 
   bool executable = true;
   char **argv = tv_to_argv(&argvars[0], NULL, &executable);
-  dict_T *env;
+  dict_T *env = NULL;
   if (!argv) {
     rettv->vval.v_number = executable ? 0 : -1;
     return;  // Did error message in tv_to_argv.
@@ -12647,33 +12647,22 @@ static void f_jobstart(typval_T *argvars, typval_T *rettv, FunPtr fptr)
         // env_size = 0;
         // tv_copy
         env = tv_dict_copy(NULL, job_env->di_tv.vval.v_dict, false, 0);
+        ILOG("clear_env: %ld", tv_dict_len(env));
       } else {
-        // env_size = os_get_fullenv_size();
-        // env = xmalloc((custom_env_size + env_size + 1) * sizeof(*env));
-        // os_copy_fullenv(env, env_size);
-        // i = env_size;
         typval_T temp_env = TV_INITIAL_VALUE;
-        // typval_T tv = TV_INITIAL_VALUE;
         f_environ(NULL, &temp_env, NULL);
+        env = tv_dict_alloc();
         tv_dict_extend(env, temp_env.vval.v_dict, "force");
         // f_extend(temp_argvars, &temp_env, NULL);
         // env = temp_env.v_dict;
       }
-      // assert(env);  // env must be allocated at this point
+      assert(env);  // env must be allocated at this point
 
-      // dict_T temp_dict = dict_to_env(job_env->di_tv.vval.v_dict);
-
-      // TV_DICT_ITER(job_env->di_tv.vval.v_dict, var, {
-      //   const char *str = tv_get_string(&var->di_tv);
-      //   assert(str);
-      //   size_t len = STRLEN(var->di_key) + strlen(str) + strlen("=") + 1;
-      //   env[i] = xmalloc(len);
-      //   snprintf(env[i], len, "%s=%s", (char *)var->di_key, str);
-      //   i++;
-      // });
 
       // must be null terminated
       // env[env_size + custom_env_size] = NULL;
+      // ILOG("");
+      ILOG("final env: %ld", tv_dict_len(env));
     }
 
 
