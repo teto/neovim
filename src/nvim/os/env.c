@@ -273,14 +273,12 @@ void os_copy_fullenv(char **env, size_t env_size)
 }
 
 
-char **localenv_to_dict(char **env)
-{
-    if (clear_env) {
-    for( char *value = env[0]; value++; ) {
-
-    }
-
-}
+// char **localenv_to_dict(char **env)
+// {
+//     if (clear_env) {
+//     for( char *value = env[0]; value++; ) {
+    // }
+// }
 
 /// Converts a dict to an environment
 ///

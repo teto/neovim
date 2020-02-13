@@ -12582,7 +12582,7 @@ static void f_jobstart(typval_T *argvars, typval_T *rettv, FunPtr fptr)
 
   bool executable = true;
   char **argv = tv_to_argv(&argvars[0], NULL, &executable);
-  dict_T env;
+  dict_T *env;
   if (!argv) {
     rettv->vval.v_number = executable ? 0 : -1;
     return;  // Did error message in tv_to_argv.
@@ -12637,25 +12637,32 @@ static void f_jobstart(typval_T *argvars, typval_T *rettv, FunPtr fptr)
       }
       // TODO
 
-      size_t custom_env_size = (size_t)tv_dict_len(job_env->di_tv.vval.v_dict);
-      size_t i = 0;
-      size_t env_size = 0;
+      // size_t custom_env_size = (size_t)tv_dict_len(job_env->di_tv.vval.v_dict);
+      // size_t i = 0;
+      // size_t env_size = 0;
 
       if (clear_env) {
         // + 1 for last null entry
-        env = xmalloc((custom_env_size + 1) * sizeof(*env));
-        env_size = 0;
+        // env = xmalloc((custom_env_size + 1) * sizeof(*env));
+        // env_size = 0;
+        // tv_copy
+        env = tv_dict_copy(NULL, job_env->di_tv.vval.v_dict, false, 0);
       } else {
-        env_size = os_get_fullenv_size();
-
-        env = xmalloc((custom_env_size + env_size + 1) * sizeof(*env));
-
-        os_copy_fullenv(env, env_size);
-        i = env_size;
+        // env_size = os_get_fullenv_size();
+        // env = xmalloc((custom_env_size + env_size + 1) * sizeof(*env));
+        // os_copy_fullenv(env, env_size);
+        // i = env_size;
+        typval_T temp_env = TV_INITIAL_VALUE;
+        // typval_T tv = TV_INITIAL_VALUE;
+        f_environ(NULL, &temp_env, NULL);
+        tv_dict_extend(env, temp_env.vval.v_dict, "force");
+        // f_extend(temp_argvars, &temp_env, NULL);
+        // env = temp_env.v_dict;
       }
       // assert(env);  // env must be allocated at this point
 
-      dict_to_env(job_env->di_tv.vval.v_dict);
+      // dict_T temp_dict = dict_to_env(job_env->di_tv.vval.v_dict);
+
       // TV_DICT_ITER(job_env->di_tv.vval.v_dict, var, {
       //   const char *str = tv_get_string(&var->di_tv);
       //   assert(str);

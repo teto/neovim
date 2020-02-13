@@ -25,7 +25,7 @@ struct process {
   const char *cwd;
   char **argv;
   bool clear_env;
-  dict_T env;
+  dict_T *env;
   Stream in, out, err;
   process_exit_cb cb;
   internal_process_cb internal_exit_cb, internal_close_cb;
