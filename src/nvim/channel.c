@@ -369,7 +369,9 @@ Channel *channel_job_start(char **argv, CallbackReader on_stdout,
   xfree(cmd);
   // os_free_fullenv(proc->env);
   // TODO free dict too
-  tv_dict_free(proc->env);
+  if (proc->env) {
+    tv_dict_free(proc->env);
+  }
 
 
 

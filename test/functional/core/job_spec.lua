@@ -74,8 +74,12 @@ describe('jobs', function()
       {'notification', 'stdout', {0, {'hello world abc', ''}}},
     })
 
-    -- now with pty set
+  end)
+
+  it('append environment with pty #env', function()
+    nvim('command', "let $VAR = 'abc'")
     nvim('command', "let g:job_opts.pty = v:true")
+    nvim('command', "let g:job_opts.env = {'TOTO': 'hello world'}")
     if iswin() then
       nvim('command', [[call jobstart('echo %TOTO% %VAR%', g:job_opts)]])
     else

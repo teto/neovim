@@ -12635,33 +12635,23 @@ static void f_jobstart(typval_T *argvars, typval_T *rettv, FunPtr fptr)
         shell_free_argv(argv);
         return;
       }
-      // TODO
 
-      // size_t custom_env_size = (size_t)tv_dict_len(job_env->di_tv.vval.v_dict);
-      // size_t i = 0;
-      // size_t env_size = 0;
+      env = tv_dict_alloc();
 
-      if (clear_env) {
-        // + 1 for last null entry
-        // env = xmalloc((custom_env_size + 1) * sizeof(*env));
-        // env_size = 0;
-        // tv_copy
-        env = tv_dict_copy(NULL, job_env->di_tv.vval.v_dict, false, 0);
-        ILOG("clear_env: %ld", tv_dict_len(env));
-      } else {
+
+      if (!clear_env) {
         typval_T temp_env = TV_INITIAL_VALUE;
         f_environ(NULL, &temp_env, NULL);
-        env = tv_dict_alloc();
+        ILOG("system env: %ld", tv_dict_len(temp_env.vval.v_dict));
         tv_dict_extend(env, temp_env.vval.v_dict, "force");
         // f_extend(temp_argvars, &temp_env, NULL);
         // env = temp_env.v_dict;
       }
+
+      tv_dict_extend(env, job_env->di_tv.vval.v_dict, "force");
       assert(env);  // env must be allocated at this point
 
 
-      // must be null terminated
-      // env[env_size + custom_env_size] = NULL;
-      // ILOG("");
       ILOG("final env: %ld", tv_dict_len(env));
     }
 

@@ -180,10 +180,20 @@ static void init_child(PtyProcess *ptyproc)
   }
 
   if (proc->env) {
-    // TODO move the env massaging here
+    // TODO move the env massaging here TERM/ LINES etc..
+    // tv_dict_add_allocated_str(
     env = tv_dict_to_env(proc->env);
+    tv_dict_item_remove();
+    void tv_dict_item_remove(dict_T *const dict, dictitem_T *const item);
+    ILOG("pty env: %ld", tv_dict_len(proc->env));
+  } else {
 
+    // typval_T temp_env = TV_INITIAL_VALUE;
+    // f_environ(NULL, &temp_env, NULL);
+    // ILOG("system env: %ld", tv_dict_len(temp_env.vval.v_dict));
+    // tv_dict_extend(env, temp_env.vval.v_dict, "force");
   }
+
   char *prog = ptyproc->process.argv[0];
   os_setenv("TERM", ptyproc->term_name ? ptyproc->term_name : "ansi", 1);
   execvpe(prog, proc->argv, env);
