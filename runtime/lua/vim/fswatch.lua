@@ -1,6 +1,13 @@
 local a = vim.api
 local log = require 'vim.lsp.log'
 
+do
+
+  local logfilename = path_join(vim.fn.stdpath('data'), 'vim-fswatch.log')
+  log.get_filename = function ()
+      return logfilename
+  end
+end
 -- 4. Try editing the file from another text editor.
 -- 5. Observe that the file reloads in Nvim (because on_change() calls
 --    |:checktime|). >
@@ -22,18 +29,33 @@ local M = {
 local Watcher = {}
 Watcher.__index = Watcher
 
+-- Watcher:watch()
+-- end
+
 -- local function file_id_new()
 --   local info = ffi.new('FileID[1]')
 --   info[0].inode = 0
 --   info[0].device_id = 0
 --   return info
 -- end
+function M.get_log_path()
+  return log.get_filename()
+end
+
+function M.set_log_level(level)
+  if type(level) == 'string' or type(level) == 'number' then
+    log.set_level(level)
+  else
+    error(string.format("Invalid log level: %q", level))
+  end
+end
 
 function M.create_watcher(bufnr, id)
   if bufnr == 0 then
     bufnr = a.nvim_get_current_buf()
   end
   local self = setmetatable({bufnr=bufnr, valid=false}, Watcher)
+
   -- TODO move some of it to C ?
   self.change_cbs = {}
   return self
@@ -55,18 +77,18 @@ function M.watch_buffer(bufnr)
     bufnr = a.nvim_get_current_buf()
   end
   -- TODO use expand("#"..bufnr..":p")
-  -- M.watch_file()
 
   print("FILENAME")
   local filename = a.nvim_eval('expand("#'..bufnr..':p")')
   -- local filename = a.call('expand("#"'..bufnr..'":p")')
   print("FILENAME")
   print(filename)
+  M.watch_file(filename)
 end
 
 function M.watch_file(fname)
   print("WATCH FILE CALLED")
-  log.info("Watching file")
+  log.info("Start Watching")
   local fullpath = a.nvim_call_function('fnamemodify', {fname, ':p'})
 
   log.info("Watching file fullname "..fname)

@@ -1523,7 +1523,8 @@ static void patch_terminfo_bugs(TUIData *data, const char *term,
   bool xterm = terminfo_is_term_family(term, "xterm")
     // Treat Terminal.app as generic xterm-like, for now.
     || nsterm;
-  bool kitty = terminfo_is_term_family(term, "xterm-kitty");
+  bool kitty = terminfo_is_term_family(term, "xterm-kitty")
+    || terminfo_is_term_family(term, "kitty");
   bool linuxvt = terminfo_is_term_family(term, "linux");
   bool bsdvt = terminfo_is_bsd_console(term);
   bool rxvt = terminfo_is_term_family(term, "rxvt");
