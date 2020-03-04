@@ -1,12 +1,17 @@
-local a = vim.api
+-- local a = vim.api
 local log = require 'vim.lsp.log'
 
 do
+  local function path_join(...)
+    return table.concat(vim.tbl_flatten{...}, path_sep)
+  end
 
   local logfilename = path_join(vim.fn.stdpath('data'), 'vim-fswatch.log')
   log.get_filename = function ()
       return logfilename
   end
+
+  log.create_log_file('vim-fswatch.log', vim.fn.stdpath('data'))
 end
 -- 4. Try editing the file from another text editor.
 -- 5. Observe that the file reloads in Nvim (because on_change() calls

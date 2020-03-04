@@ -19,19 +19,15 @@ log.levels = {
 local current_log_level = log.levels.WARN
 local log_date_format = "%FT%H:%M:%SZ%z"
 
-do
+function log.create_log_file(filename, ...)
   local path_sep = vim.loop.os_uname().sysname == "Windows" and "\\" or "/"
   local function path_join(...)
     return table.concat(vim.tbl_flatten{...}, path_sep)
   end
-  local logfilename = path_join(vim.fn.stdpath('data'), 'vim-lsp.log')
+  local logfilename = path_join(..., filename)
 
-  --- Return the log filename.
-  function log.get_filename()
-    return logfilename
-  end
-
-  vim.fn.mkdir(vim.fn.stdpath('data'), "p")
+  -- ex vim.fn.stdpath('data')
+  vim.fn.mkdir(..., "p")
   local logfile = assert(io.open(logfilename, "a+"))
   for level, levelnr in pairs(log.levels) do
     -- Also export the log level on the root object.
@@ -49,7 +45,8 @@ do
     -- This way you can avoid string allocations if the log level isn't high enough.
     log[level:lower()] = function(...)
       local argc = select("#", ...)
-      if levelnr < current_log_level then return false end
+      -- TODO fix later (current_log_level being local)
+      -- if levelnr < current_log_level then return false end
       if argc == 0 then return true end
       local info = debug.getinfo(2, "Sl")
       local fileinfo = string.format("%s:%s", info.short_src, info.currentline)
@@ -68,6 +65,18 @@ do
   end
   -- Add some space to make it easier to distinguish different neovim runs.
   logfile:write("\n")
+
+end
+
+
+
+do
+
+  --- Return the log filename.
+  function log.get_filename()
+    return logfilename
+  end
+  log.create_log_file('vim-lsp.log', vim.fn.stdpath('data'))
 end
 
 -- This is put here on purpose after the loop above so that it doesn't
