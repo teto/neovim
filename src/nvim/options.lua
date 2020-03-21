@@ -326,6 +326,7 @@ return {
     },
     {
       full_name='channel',
+      short_desc=N_("Channel connected to the buffer"),
       type='number', scope={'buffer'},
       no_mkrc=true,
       nodefault=true,
@@ -1455,6 +1456,7 @@ return {
     },
     {
       full_name='jumpoptions', abbreviation='jop',
+      short_desc=N_("Controls the behavior of the jumplist"),
       type='string', list='onecomma', scope={'global'},
       deny_duplicates=true,
       varname='p_jop',
@@ -1635,6 +1637,7 @@ return {
     },
     {
       full_name='makeencoding', abbreviation='menc',
+      short_desc=N_("Converts the output of external commands"),
       type='string', scope={'global', 'buffer'},
       vi_def=true,
       varname='p_menc',
@@ -1728,6 +1731,7 @@ return {
     },
     {
       full_name='modelineexpr', abbreviation='mle',
+      short_desc=N_("allow some options to be set in modeline"),
       type='bool', scope={'global'},
       vi_def=true,
       secure=true,
@@ -2036,6 +2040,7 @@ return {
     },
     {
       full_name='pumblend', abbreviation='pb',
+      short_desc=N_("Controls transparency level of popup menu"),
       type='number', scope={'global'},
       vi_def=true,
       redraw={'ui_option'},
@@ -2052,6 +2057,7 @@ return {
     },
     {
       full_name='pumwidth', abbreviation='pw',
+      short_desc=N_("minimum width of the popup menu"),
       type='number', scope={'global'},
       vi_def=true,
       varname='p_pw',
@@ -2059,6 +2065,7 @@ return {
     },
     {
       full_name='pyxversion', abbreviation='pyx',
+      short_desc=N_("selects default python version to use"),
       type='number', scope={'global'},
       secure=true,
       vi_def=true,
@@ -2086,6 +2093,7 @@ return {
     },
     {
       full_name='redrawdebug', abbreviation='rdb',
+      short_desc=N_("Changes the way redrawing works (debug)"),
       type='string', list='onecomma', scope={'global'},
       vi_def=true,
       varname='p_rdb',
@@ -2300,6 +2308,7 @@ return {
     },
     {
       full_name='shadafile', abbreviation='sdf',
+      short_desc=N_("overrides the filename used for shada"),
       type='string', list='onecomma', scope={'global'},
       deny_duplicates=true,
       vi_def=true,
@@ -2702,6 +2711,7 @@ return {
     },
     {
       full_name='tagfunc', abbreviation='tfu',
+      short_desc=N_("function used to perform tag searches"),
       type='string', scope={'buffer'},
       vim=true,
       vi_def=true,
@@ -3018,12 +3028,13 @@ return {
     {
       -- Alias for "shada".
       full_name='viminfo', abbreviation='vi',
+      short_desc=N_("Alias for shada"),
       type='string', scope={'global'}, nodefault=true,
     },
     {
       -- Alias for "shadafile".
       full_name='viminfofile', abbreviation='vif',
-      short_desc=N_("Compatibility variable, look for shada rather"),
+      short_desc=N_("Alias for shadafile instead"),
       type='string', scope={'global'}, nodefault=true,
     },
     {
@@ -3130,6 +3141,7 @@ return {
     },
     {
       full_name='winblend', abbreviation='winbl',
+      short_desc=N_("Controls transparency level for floating windows"),
       type='number', scope={'window'},
       vi_def=true,
       redraw={'current_window'},

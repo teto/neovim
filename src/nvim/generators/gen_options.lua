@@ -47,6 +47,9 @@ if action == "mpack" then
 
   local mpack = require('mpack')
   local tablex = require('pl.tablex')
+  -- local pprint = require('pl.pretty')
+  -- print(entry.full_name)
+  -- pprint.dump(entry)
 
   local drop_useless = function (entry)
     -- drop fields that bother libmpack
@@ -54,6 +57,7 @@ if action == "mpack" then
     entry.defaults = nil
     entry.redraw = nil
     entry.nomkrc = nil
+    entry.short_desc = entry.short_desc()
 
     return entry
   end
@@ -211,20 +215,20 @@ local dump_option = function(i, o)
   w('  },')
 end
 
-	w('static vimoption_T options[] = {')
-	for i, o in ipairs(options.options) do
-	dump_option(i, o)
-	end
-	w('  [' .. ('%u'):format(#options.options) .. ']={.fullname=NULL}')
-	w('};')
-	w('')
+  w('static vimoption_T options[] = {')
+  for i, o in ipairs(options.options) do
+  dump_option(i, o)
+  end
+  w('  [' .. ('%u'):format(#options.options) .. ']={.fullname=NULL}')
+  w('};')
+  w('')
 
-	for k, v in pairs(defines) do
-	w('#define ' .. k .. ' ' .. v)
-	end
-	opt_fd:close()
+  for k, v in pairs(defines) do
+  w('#define ' .. k .. ' ' .. v)
+  end
+  opt_fd:close()
 else
-	print("Wrong action")
-	printhelp()
+  print("Wrong action")
+  printhelp()
 end
 
