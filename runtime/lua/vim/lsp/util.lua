@@ -797,7 +797,7 @@ function M.locations_to_items(locations)
   for _, d in ipairs(locations) do
     local start = d.range.start
     local fname = assert(vim.uri_to_fname(d.uri))
-    table.insert(grouped[fname], {start = start})
+    table.insert(grouped[fname], {start = start, msg= d.message })
   end
 
 
@@ -824,7 +824,7 @@ function M.locations_to_items(locations)
             filename = fname,
             lnum = row + 1,
             col = col + 1;
-            text = line;
+            text = temp.msg or line;
           })
         end
       end
