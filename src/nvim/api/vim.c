@@ -2546,7 +2546,7 @@ void nvim_select_popupmenu_item(Integer item, Boolean insert, Boolean finish,
   FUNC_API_SINCE(6)
 {
   if (opts.size > 0) {
-    api_set_error(err, kErrorTypeValidation, "opts dict isn't empty");
+    api_set_error(err, kErrorTypeValidation, "pum's opts dict isn't empty");
     return;
   }
 
