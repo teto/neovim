@@ -296,17 +296,6 @@ pos_T *movechangelist(int count)
   return &(curbuf->b_changelist[n].mark);
 }
 
-/*
- * Find mark "c" in buffer pointed to by "buf".
- * If "changefile" is TRUE it's allowed to edit another file for '0, 'A, etc.
- * If "fnum" is not NULL store the fnum there for '0, 'A etc., don't edit
- * another file.
- * Returns:
- * - pointer to pos_T if found.  lnum is 0 when mark not set, -1 when mark is
- *   in another file which can't be gotten. (caller needs to check lnum!)
- * - NULL if there is no mark called 'c'.
- * - -1 if mark is in other file and jumped there (only if changefile is TRUE)
- */
 pos_T *getmark_buf(buf_T *buf, int c, bool changefile)
 {
   return getmark_buf_fnum(buf, c, changefile, NULL);
@@ -317,6 +306,17 @@ pos_T *getmark(int c, bool changefile)
   return getmark_buf_fnum(curbuf, c, changefile, NULL);
 }
 
+
+/// Find mark "c" in buffer pointed to by "buf".
+///
+/// @param changefile allows to edit another file for '0, 'A, etc.
+/// @parma fnum if not NULL, store the fnum there for '0, 'A etc., don't edit
+/// another file.
+/// @return :
+/// - pointer to pos_T if found.  lnum is 0 when mark not set, -1 when mark is
+///   in another file which can't be gotten. (caller needs to check lnum!)
+/// - NULL if there is no mark called 'c'.
+/// - -1 if mark is in other file and jumped there (only if changefile is true)
 pos_T *getmark_buf_fnum(buf_T *buf, int c, bool changefile, int *fnum)
 {
   pos_T               *posp;

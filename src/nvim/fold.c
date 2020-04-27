@@ -707,7 +707,7 @@ void deleteFold(
     const linenr_T start,
     const linenr_T end,
     const int recursive,
-    const bool had_visual         // true when Visual selection used
+    const bool had_visual
 )
 {
   fold_T      *fp;

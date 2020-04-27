@@ -9309,7 +9309,9 @@ static void ex_match(exarg_T *eap)
 static void ex_fold(exarg_T *eap)
 {
   if (foldManualAllowed(true)) {
-    foldCreate(curwin, eap->line1, eap->line2, 0, 0);
+    pos_T *pos1 = getmark_buf_fnum(curbuf, '<' , false, NULL);
+    pos_T *pos2 = getmark_buf_fnum(curbuf, '>' , false, NULL);
+    foldCreate(curwin, pos1->lnum, pos2->lnum, pos1->col, pos2->col);
   }
 }
 

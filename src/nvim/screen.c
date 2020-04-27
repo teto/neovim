@@ -2209,12 +2209,13 @@ fill_foldcolumn(
 
 /// Display line "lnum" of window 'wp' on the screen.
 /// wp->w_virtcol needs to be valid.
+/// Start at row "startrow", stop when "endrow" is reached.
 ///
 /// @param lnum line to display
+/// @param nochange not updating for changed text
 /// @param number_only only update the number column
 /// @param fp only update the number column
-/// 
-/// Start at row "startrow", stop when "endrow" is reached.
+///
 /// @return the number of last row the line occupies.
 static int
 win_line (
@@ -2222,7 +2223,7 @@ win_line (
     linenr_T lnum,
     int startrow,
     int endrow,
-    bool nochange,                    // not updating for changed text
+    bool nochange,
     bool number_only,
     fold_T *fp
 )

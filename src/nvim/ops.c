@@ -1240,13 +1240,15 @@ static void stuffescaped(const char *arg, int literally)
   }
 }
 
-// If "regname" is a special register, return true and store a pointer to its
-// value in "argp".
+/// If "regname" is a special register, return true and store a pointer to its
+/// value in "argp".
+/// @param[out] allocated set to true when value was allocated
+/// @param errmsg give error message when failing
 bool get_spec_reg(
     int regname,
     char_u **argp,
-    bool *allocated,        // return: true when value was allocated
-    bool errmsg             // give error message when failing
+    bool *allocated,
+    bool errmsg
 )
 {
   size_t cnt;
@@ -5072,7 +5074,7 @@ static void *get_reg_wrap_one_line(char_u *s, int flags)
 /// Gets the contents of a register.
 /// @remark Used for `@r` in expressions and for `getreg()`.
 ///
-/// @param regname  The register.
+/// @param regname  The register (for instance '=')
 /// @param flags    see @ref GRegFlags
 ///
 /// @returns The contents of the register as an allocated string.
