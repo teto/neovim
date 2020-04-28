@@ -1492,6 +1492,7 @@ static void win_update(win_T *wp)
                        // should be fine as long as we dont have nested inline
                        // folds
                        // (results.ga_len > 0) ? &((fold_T *)(results.ga_data))[0] : NULL
+                       &win_foldinfo,
                        (fold_found) ? fp : NULL
                        );
 
@@ -1524,7 +1525,8 @@ static void win_update(win_T *wp)
         if (fold_count != 0) {
           fold_line(wp, fold_count, &win_foldinfo, lnum, row);
         } else {
-          (void)win_line(wp, lnum, srow, wp->w_grid.Rows, true, true, NULL);
+          // TODO pass foldinfo and remove fold_line call
+          (void)win_line(wp, lnum, srow, wp->w_grid.Rows, true, true, NULL, NULL);
         }
       }
 
@@ -2225,9 +2227,12 @@ win_line (
     int endrow,
     bool nochange,
     bool number_only,
+    foldinfo_T *foldinfo,
     fold_T *fp
 )
 {
+  char_u buf_fold[FOLD_TEXT_LEN];          // TODO replace afterwards temporary memory
+
   int c = 0;                          // init for GCC
   long vcol = 0;                      // virtual column (for tabs)
   long vcol_sbr = -1;                 // virtual column after showbreak
@@ -3923,12 +3928,8 @@ win_line (
       // deal with conceal
       // MAY CRASH if used with conceal etc
       // TODO understand how conceal can print several characters
-      if (fp != NULL && fp->fd_flags == FD_CLOSED) {
-          // && (fp->
-          //     || conceal_cursor_line(wp))
-          // && ((syntax_flags & HL_CONCEAL) != 0 || has_match_conc > 0)
-          // && !(lnum_in_visual_area
-          //      && vim_strchr(wp->w_p_cocu, 'v') == NULL)
+      if ( draw_state == WL_LINE
+          && (fp != NULL && fp->fd_flags == FD_CLOSED)) {
 
         // ILOG("looking for mark id %lu ", fp->fd_mark_id);
         ExtmarkInfo mark = extmark_from_id(wp->w_buffer, fold_init(), fp->fd_mark_id);
@@ -3938,6 +3939,13 @@ win_line (
         ILOG("FP: fold start %ld", fp->fd_top);
         ILOG("FP vcol/col %ld/%d vs mark.col %d / end_col %d (inline fold %d)",
              vcol, col, mark.col, mark.end_col, inline_fold);
+        // here we check if it's a fullline 
+        // code inspried by fold_line
+
+        // TODO may crash
+        // use this in case of multiline fold
+        n_extra = get_foldtext(wp, lnum, mark.end_row, foldinfo, buf_fold);
+        char_attr = win_hl_attr(wp, HLF_FLL);
         // check cols
         // mark.end_col
         // check for && mark.endcol if endline

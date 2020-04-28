@@ -1780,8 +1780,13 @@ static void foldDelMarker(
 }
 
 // get_foldtext() {{{2
-/// Return the text for a closed fold at line "lnum", with last line "lnume".
-/// When 'foldtext' isn't set puts the result in "buf[FOLD_TEXT_LEN]".
+/// Generates text to display
+///
+/// @param buf allocated memory of length FOLD_TEXT_LEN. Used when 'foldtext'
+///            isn't set puts the result in "buf[FOLD_TEXT_LEN]".
+/// @param at line "lnum", with last line "lnume".
+///@return the text for a closed fold
+///
 /// Otherwise the result is in allocated memory.
 char_u *get_foldtext(win_T *wp, linenr_T lnum, linenr_T lnume,
                      foldinfo_T *foldinfo, char_u *buf)
