@@ -1456,14 +1456,21 @@ static void win_update(win_T *wp)
       // getFolds(&wp->w_folds, lnum, &results);
 
       fold_count = foldedCount(wp, lnum, &win_foldinfo);
+
+      // TODO this should disappear and be moved lower down
+      // so we could remove DID_FOLD as it's almost unused and thus get rid of
+      // all the DID_*
       if (fold_count != 0) {
-        fold_line(wp, fold_count, &win_foldinfo, lnum, row);
-        ++row;
-        --fold_count;
+        // fold_line(wp, fold_count, &win_foldinfo, lnum, row);
+        // ++row;
+        // --fold_count;
         wp->w_lines[idx].wl_folded = TRUE;
-        wp->w_lines[idx].wl_lastlnum = lnum + fold_count;
+        // -1 because I changed fold_count
+        wp->w_lines[idx].wl_lastlnum = lnum + fold_count - 1;
         did_update = DID_FOLD;
-      } else if (idx < wp->w_lines_valid
+      }
+
+      if (idx < wp->w_lines_valid
                  && wp->w_lines[idx].wl_valid
                  && wp->w_lines[idx].wl_lnum == lnum
                  && lnum > wp->w_topline
@@ -1498,6 +1505,11 @@ static void win_update(win_T *wp)
 
         wp->w_lines[idx].wl_folded = FALSE;
         wp->w_lines[idx].wl_lastlnum = lnum;
+        if (fp != NULL && fp->fd_flags == FD_CLOSED){
+          // TODO set to closed if multiline fold and
+          wp->w_lines[idx].wl_folded = fp->fd_flags == FD_CLOSED && fp->fd_len > 1;
+          wp->w_lines[idx].wl_lastlnum = lnum + fold_count - 1;
+        }
         did_update = DID_LINE;
         syntax_last_parsed = lnum;
       }
@@ -2143,8 +2155,9 @@ static void copy_text_attr(int off, char_u *buf, int len, int attr)
 /// Only to be called when 'foldcolumn' > 0.
 ///
 /// @param[out] p  Char array to write into
-/// @param lnum    Absolute current line number
+/// @param[in] wp      concerned window
 /// @param closed  Whether it is in 'foldcolumn' mode
+/// @param lnum    Absolute current line number
 ///
 /// Assume monocell characters
 /// @return number of chars added to \param p
@@ -2209,6 +2222,9 @@ fill_foldcolumn(
 }
 
 
+/// TODO make a better job at explaining which attr/p_extra is used with whic
+/// formalize the state to be able to better split the code
+///
 /// Display line "lnum" of window 'wp' on the screen.
 /// wp->w_virtcol needs to be valid.
 /// Start at row "startrow", stop when "endrow" is reached.
@@ -2231,7 +2247,8 @@ win_line (
     fold_T *fp
 )
 {
-  char_u buf_fold[FOLD_TEXT_LEN];          // TODO replace afterwards temporary memory
+  // TODO replace afterwards temporary memory (or with extra)
+  char_u buf_fold[FOLD_TEXT_LEN];
 
   int c = 0;                          // init for GCC
   long vcol = 0;                      // virtual column (for tabs)
@@ -2240,13 +2257,14 @@ win_line (
   char_u      *line;                  // current line
   char_u      *ptr;                   // current position in "line"
   int row;                            // row in the window, excl w_winrow
-  ScreenGrid *grid = &wp->w_grid;     // grid specfic to the window
+  ScreenGrid *grid = &wp->w_grid;     // grid specific to the window
 
   char_u extra[57];                   // sign, line number and 'fdc' must
                                       // fit in here
   int n_extra = 0;                    // number of extra chars
   char_u      *p_extra = NULL;        // string of extra chars, plus NUL
-  char_u      *p_extra_free = NULL;   // p_extra needs to be freed
+                                      // must be used with n_extra
+  char_u      *p_extra_free = NULL;   // p_extra_free needs to be freed before use
   int c_extra = NUL;                  // extra chars, all the same
   int c_final = NUL;                  // final char, mandatory if set
   int extra_attr = 0;                 // attributes when n_extra != 0
@@ -2256,7 +2274,8 @@ win_line (
   int lcs_eol_one = wp->w_p_lcs_chars.eol;     // 'eol'  until it's been used
   int lcs_prec_todo = wp->w_p_lcs_chars.prec;  // 'prec' until it's been used
 
-  // saved "extra" items for when draw_state becomes WL_LINE (again)
+  // saved "extra" items for when draw_state becomes WL_LINE (again) after
+  // a newline
   int saved_n_extra = 0;
   char_u      *saved_p_extra = NULL;
   int saved_c_extra = 0;
@@ -2278,7 +2297,8 @@ win_line (
   pos_T pos;
   long v;
 
-  int char_attr = 0;                    /* attributes for next character */
+  int char_attr = 0;                    // attributes for next character
+                                        // used when n is set
   int attr_pri = FALSE;                 /* char_attr has priority */
   int area_highlighting = FALSE;           /* Visual or incsearch highlighting
                                               in this line */
@@ -2334,6 +2354,7 @@ win_line (
   bool search_attr_from_match = false;  // if search_attr is from :match
   bool has_decorations = false;         // this buffer has decorations
   bool do_virttext = false;             // draw virtual text for this line
+  int fold_idx = 0;                     // last check fold
 
   /* draw_state: items that are drawn in sequence: */
 #define WL_START        0               /* nothing done yet */
@@ -2890,7 +2911,7 @@ win_line (
           // already be in use.
           xfree(p_extra_free);
           p_extra_free = xmalloc(MAX_MCO * fdc + 1);
-          n_extra = fill_foldcolumn(p_extra_free, wp, false, lnum);
+          n_extra = fill_foldcolumn(p_extra_free, wp, foldinfo->fi_level != 0, lnum);
           p_extra_free[n_extra] = NUL;
           p_extra = p_extra_free;
           c_extra = NUL;
@@ -3130,6 +3151,114 @@ win_line (
       break;
     }
 
+    // TODO(teto): this should be changed to account for multiple inline folds
+    // copied the conceal block before and adapting it to display inline folds
+    // deal with conceal
+    // MAY CRASH if used with conceal etc
+    // TODO understand how conceal can print several characters
+    if (draw_state == WL_LINE
+        && (fp != NULL && fp->fd_flags == FD_CLOSED)
+        && (fold_idx == 0)
+    ) {
+      fold_idx++;
+      // ILOG("looking for mark id %lu ", fp->fd_mark_id);
+      ExtmarkInfo mark = extmark_from_id(wp->w_buffer, fold_init(), fp->fd_mark_id);
+      bool inline_fold = mark.row == mark.end_row;
+
+      // ILOG("FP mark id %lu ", mark.mark_id);
+      ILOG("FP: fold start %ld", fp->fd_top);
+      ILOG("FP vcol/col %ld/%d vs mark.col %d / end_col %d (inline fold %d)",
+            vcol, col, mark.col, mark.end_col, inline_fold);
+      // here we check if it's a fullline
+      // code taken by fold_line
+
+      // use foldtext when using multiline fold
+      if (!inline_fold && mark.col == 0) {
+        char_attr = win_hl_attr(wp, HLF_FL);
+        // saved_attr2 = win_hl_attr(wp, HLF_FL);
+        // line_attr = win_hl_attr(wp, HLF_FL);
+        ILOG("Hit win_line's get_foldtext %d ", row);
+
+        p_extra = get_foldtext(wp, lnum, mark.end_row, foldinfo, buf_fold);
+        p_extra[FOLD_TEXT_LEN] = NUL;
+        n_extra = FOLD_TEXT_LEN;
+        // n_extra = grid->Columns - col;
+        ILOG("p_extra = %s ", p_extra);
+        // grid->Columns - col;
+        // n_extra = strlen(p_extra);
+        // make sure there is a NUL at end of p_extra
+        // c = 0;
+        c_extra = NUL;
+        c_final = NUL;
+    // TODO do the offset ?
+        // TODO change col ?
+        // Pretend we have finished updating the window.  Except when
+        // 'cursorcolumn' is set.
+        // if (wp->w_p_cuc) {
+        //   row = wp->w_cline_row + wp->w_cline_height;
+        // } else {
+        //   row = grid->Rows;
+        // }
+
+      }
+      // check cols, check for && mark.endcol if endline
+      // else {
+      //   // saved_attr3
+      //   // char_attr = win_hl_attr(wp, HLF_FL);
+
+      //   char_attr = win_hl_attr(wp, HLF_FL);
+      //   extra_attr = win_hl_attr(wp, HLF_FLL); // for n_extra
+
+      //   if ((vcol < grid->Columns)
+      //     && ((inline_fold && mark.col <= vcol && vcol < mark.end_col)
+      //         || (!inline_fold && mark.col <= vcol))
+      //   ) {
+      //     char_attr = win_hl_attr(wp, HLF_FL);
+      //     // supposedly first time we enter this
+      //     if(true) {
+
+      //       // hardcode the character for now,
+      //       if (wp->w_p_lcs_chars.conceal != NUL) {
+      //         c = wp->w_p_lcs_chars.conceal;
+      //       } else {
+      //         c = 'X';
+      //       }
+
+      //       if (n_extra > 0)
+      //         vcol_off += n_extra;
+      //       vcol += n_extra;
+      //       if (wp->w_p_wrap && n_extra > 0) {
+      //         if (wp->w_p_rl) {
+      //           col -= n_extra;
+      //           boguscols -= n_extra;
+      //         } else {
+      //           boguscols += n_extra;
+      //           col += n_extra;
+      //         }
+      //       }
+      //       n_extra = 0;
+      //       n_attr = 0;
+      //     } else if (n_skip == 0) {
+      //       is_concealing = TRUE;
+      //       n_skip = 1;
+      //     }
+      //     mb_c = c;
+      //     if (utf_char2len(c) > 1) {
+      //       mb_utf8 = true;
+      //       u8cc[0] = 0;
+      //       c = 0xc0;
+      //     } else {
+      //       mb_utf8 = false;              // don't draw as UTF-8
+      //     }
+      //   } else {
+      //     prev_syntax_id = 0;
+      //     is_concealing = FALSE;
+      //   }
+      // }
+
+
+    } // if there is a closed fold on the line
+
     if (draw_state == WL_LINE && (area_highlighting || has_spell)) {
       // handle Visual or match highlighting in this line
       if (vcol == fromcol
@@ -3144,6 +3273,7 @@ win_line (
                                         && (colnr_T)vcol == wp->w_virtcol))) {
         area_attr = 0;                          // stop highlighting
      }
+
 
       if (!n_extra) {
         /*
@@ -3922,83 +4052,6 @@ win_line (
         prev_syntax_id = 0;
         is_concealing = FALSE;
       }
-
-      // TODO(teto): hacked stuff
-      // copied the conceal block before and adapting it to display inline folds
-      // deal with conceal
-      // MAY CRASH if used with conceal etc
-      // TODO understand how conceal can print several characters
-      if ( draw_state == WL_LINE
-          && (fp != NULL && fp->fd_flags == FD_CLOSED)) {
-
-        // ILOG("looking for mark id %lu ", fp->fd_mark_id);
-        ExtmarkInfo mark = extmark_from_id(wp->w_buffer, fold_init(), fp->fd_mark_id);
-        bool inline_fold = mark.row == mark.end_row;
-
-        // ILOG("FP mark id %lu ", mark.mark_id);
-        ILOG("FP: fold start %ld", fp->fd_top);
-        ILOG("FP vcol/col %ld/%d vs mark.col %d / end_col %d (inline fold %d)",
-             vcol, col, mark.col, mark.end_col, inline_fold);
-        // here we check if it's a fullline 
-        // code inspried by fold_line
-
-        // TODO may crash
-        // use this in case of multiline fold
-        n_extra = get_foldtext(wp, lnum, mark.end_row, foldinfo, buf_fold);
-        char_attr = win_hl_attr(wp, HLF_FLL);
-        // check cols
-        // mark.end_col
-        // check for && mark.endcol if endline
-        // TODO display inline
-        if ((vcol < grid->Columns)
-            && ((inline_fold && mark.col <= vcol && vcol < mark.end_col)
-                || (!inline_fold && mark.col <= vcol))
-        ) {
-        char_attr = win_hl_attr(wp, HLF_FL);
-        // if ((prev_syntax_id != syntax_seqnr || has_match_conc > 1)
-        //     && (syn_get_sub_char() != NUL || match_conc || wp->w_p_cole == 1)
-        //     && wp->w_p_cole != 3) {
-        // supposedly first time we enter this
-        if(true) {
-
-          // hardcode the character for now,
-          if (wp->w_p_lcs_chars.conceal != NUL) {
-            c = wp->w_p_lcs_chars.conceal;
-          } else {
-            c = 'X';
-          }
-
-          if (n_extra > 0)
-            vcol_off += n_extra;
-          vcol += n_extra;
-          if (wp->w_p_wrap && n_extra > 0) {
-            if (wp->w_p_rl) {
-              col -= n_extra;
-              boguscols -= n_extra;
-            } else {
-              boguscols += n_extra;
-              col += n_extra;
-            }
-          }
-          n_extra = 0;
-          n_attr = 0;
-        } else if (n_skip == 0) {
-          is_concealing = TRUE;
-          n_skip = 1;
-        }
-        mb_c = c;
-        if (utf_char2len(c) > 1) {
-          mb_utf8 = true;
-          u8cc[0] = 0;
-          c = 0xc0;
-        } else {
-          mb_utf8 = false;              // don't draw as UTF-8
-        }
-      } else {
-        prev_syntax_id = 0;
-        is_concealing = FALSE;
-      }
-      } // if fp present
 
       if (n_skip > 0 && did_decrement_ptr) {
         // not showing the '>', put pointer back to avoid getting stuck

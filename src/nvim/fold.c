@@ -1799,6 +1799,7 @@ char_u *get_foldtext(win_T *wp, linenr_T lnum, linenr_T lnume,
   static win_T    *last_wp = NULL;
   static linenr_T last_lnum = 0;
 
+  // TODO this could be removed ?
   if (last_wp == NULL || last_wp != wp || last_lnum > lnum || last_lnum == 0)
     /* window changed, try evaluating foldtext setting once again */
     got_fdt_error = FALSE;
@@ -1818,8 +1819,8 @@ char_u *get_foldtext(win_T *wp, linenr_T lnum, linenr_T lnume,
     set_vim_var_nr(VV_FOLDEND, (varnumber_T) lnume);
 
     // Set "v:foldstartcol" and "v:foldendcol".
-    set_vim_var_nr(VV_FOLDSTARTCOL, (varnumber_T) foldinfo->fi_startcol);
-    set_vim_var_nr(VV_FOLDENDCOL, (varnumber_T) foldinfo->fi_endcol);
+    set_vim_var_nr(VV_FOLDSTARTCOL, (varnumber_T)foldinfo->fi_startcol);
+    set_vim_var_nr(VV_FOLDENDCOL, (varnumber_T)foldinfo->fi_endcol);
 
     /* Set "v:folddashes" to a string of "level" dashes. */
     /* Set "v:foldlevel" to "level". */
