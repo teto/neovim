@@ -699,7 +699,7 @@ static void win_update(win_T *wp)
   long j;
   static int recursive = FALSE;         /* being called recursively */
   int old_botline = wp->w_botline;
-  long fold_count;              // TODO rename to folded_lines instead
+  long foldedLines;              // TODO rename to folded_lines instead
   // Remember what happened to the previous line.
 #define DID_NONE 1      // didn't update a line
 #define DID_LINE 2      // updated a normal line
@@ -1450,23 +1450,20 @@ static void win_update(win_T *wp)
        */
       // TODO(teto): add an option to control wether to call fold_line ?
       // TODO pass only the outer fold
-      // garray_T results = GA_EMPTY_INIT_VALUE;
-      // ga_init(&results, sizeof(fold_T *), 32);
-      // this function might be broken
-      // getFolds(&wp->w_folds, lnum, &results);
 
-      fold_count = foldedCount(wp, lnum, &win_foldinfo);
+      foldedLines = foldedCount(wp, lnum, &win_foldinfo);
 
       // TODO this should disappear and be moved lower down
       // so we could remove DID_FOLD as it's almost unused and thus get rid of
       // all the DID_*
-      if (fold_count != 0) {
+      if (foldedLines != 0) {
         // fold_line(wp, fold_count, &win_foldinfo, lnum, row);
         // ++row;
-        // --fold_count;
+        // keep the -- since fold_count is used later
+        --foldedLines;
         wp->w_lines[idx].wl_folded = TRUE;
         // -1 because I changed fold_count
-        wp->w_lines[idx].wl_lastlnum = lnum + fold_count - 1;
+        wp->w_lines[idx].wl_lastlnum = lnum + foldedLines;
         did_update = DID_FOLD;
       }
 
@@ -1490,25 +1487,23 @@ static void win_update(win_T *wp)
 
         // Display one line.
         // TODO pass possible fold
-        fold_T *fp = NULL;
-        bool fold_found = foldFind(&wp->w_folds, lnum, &fp);
-        // ILOG("win_line called with folds ? %d ");
+        // fold_T *fp = NULL;
+        // bool fold_found = foldFind(&wp->w_folds, lnum, &fp);
 
         row = win_line(wp, lnum, srow, wp->w_grid.Rows, mod_top == 0, false,
-                       // pass the outer fold
-                       // should be fine as long as we dont have nested inline
-                       // folds
-                       // (results.ga_len > 0) ? &((fold_T *)(results.ga_data))[0] : NULL
-                       &win_foldinfo,
-                       (fold_found) ? fp : NULL
+                       &win_foldinfo
+                       // , (fold_found) ? fp : NULL
                        );
 
         wp->w_lines[idx].wl_folded = FALSE;
         wp->w_lines[idx].wl_lastlnum = lnum;
-        if (fp != NULL && fp->fd_flags == FD_CLOSED){
+        if (foldedLines != 0) {
           // TODO set to closed if multiline fold and
-          wp->w_lines[idx].wl_folded = fp->fd_flags == FD_CLOSED && fp->fd_len > 1;
-          wp->w_lines[idx].wl_lastlnum = lnum + fold_count - 1;
+          // wp->w_lines[idx].wl_folded = fp->fd_flags == FD_CLOSED && fp->fd_len > 1;
+          wp->w_lines[idx].wl_folded = foldedLines != 0;
+          // TODO dont use foldcount but if it's multiline for instance
+          wp->w_lines[idx].wl_lastlnum = lnum + foldedLines;
+          ILOG("win_line folded=%d lastlnum=%ld", wp->w_lines[idx].wl_folded, wp->w_lines[idx].wl_lastlnum);
         }
         did_update = DID_LINE;
         syntax_last_parsed = lnum;
@@ -1528,17 +1523,17 @@ static void win_update(win_T *wp)
       if (dollar_vcol == -1)
         wp->w_lines[idx].wl_size = row - srow;
       ++idx;
-      lnum += fold_count + 1;
+      lnum += foldedLines + 1;
     } else {
       if (wp->w_p_rnu) {
         // 'relativenumber' set: The text doesn't need to be drawn, but
         // the number column nearly always does.
-        fold_count = foldedCount(wp, lnum, &win_foldinfo);
-        if (fold_count != 0) {
-          fold_line(wp, fold_count, &win_foldinfo, lnum, row);
+        foldedLines = foldedCount(wp, lnum, &win_foldinfo);
+        if (foldedLines != 0) {
+          fold_line(wp, foldedLines, &win_foldinfo, lnum, row);
         } else {
-          // TODO pass foldinfo and remove fold_line call
-          (void)win_line(wp, lnum, srow, wp->w_grid.Rows, true, true, NULL, NULL);
+          // TODO pass &win_foldinfo and remove fold_line call
+          (void)win_line(wp, lnum, srow, wp->w_grid.Rows, true, true, NULL);
         }
       }
 
@@ -2243,12 +2238,10 @@ win_line (
     int endrow,
     bool nochange,
     bool number_only,
-    foldinfo_T *foldinfo,
-    fold_T *fp
+    foldinfo_T *foldinfo
+    // , fold_T *fp
 )
 {
-  // TODO replace afterwards temporary memory (or with extra)
-  char_u buf_fold[FOLD_TEXT_LEN];
 
   int c = 0;                          // init for GCC
   long vcol = 0;                      // virtual column (for tabs)
@@ -2259,6 +2252,7 @@ win_line (
   int row;                            // row in the window, excl w_winrow
   ScreenGrid *grid = &wp->w_grid;     // grid specific to the window
 
+  // TODO reuse this for folds as well
   char_u extra[57];                   // sign, line number and 'fdc' must
                                       // fit in here
   int n_extra = 0;                    // number of extra chars
@@ -2354,7 +2348,14 @@ win_line (
   bool search_attr_from_match = false;  // if search_attr is from :match
   bool has_decorations = false;         // this buffer has decorations
   bool do_virttext = false;             // draw virtual text for this line
+
+  // fold related information
   int fold_idx = 0;                     // last check fold
+  // TODO replace afterwards temporary memory (or with extra)
+  // TODO reuse 'extra' instead
+  char_u buf_fold[FOLD_TEXT_LEN];
+  garray_T folds = GA_EMPTY_INIT_VALUE; // folds on this line
+  fold_T *current_fold = NULL;
 
   /* draw_state: items that are drawn in sequence: */
 #define WL_START        0               /* nothing done yet */
@@ -2577,6 +2578,32 @@ win_line (
       }
       area_highlighting = true;
       attr = win_hl_attr(wp, HLF_I);
+    }
+
+
+    // load active folds as well
+    if (foldinfo->fi_level > 0) {
+      // search active folds
+      // uint64_t fold_ns = fold_init();
+      // int res = foldFind(&curwin->w_folds, lnum, &current);
+      // fold devient une decoration de l'extmark ?
+      // extmark_get();
+
+      ga_init(&folds, sizeof(fold_T *), 32);
+      // this function might be broken
+      // change background of (un)folded 
+      // foldFindAccum(&wp->w_folds, lnum, &folds);
+      // TODO clear at the end
+      // ILOG("Found %d folds", folds.ga_len);
+      // current_fold = (folds.ga_len != 0) ? &((fold_T *)folds.ga_data)[0] : NULL;
+      // if (folds.ga_len > 0)
+      //   ILOG("Current fold num %ld", current_fold->fd_top);
+
+      if(foldFind(&wp->w_folds, lnum, &current_fold)) {
+        ILOG("Current fold num %ld", current_fold->fd_top);
+      } else {
+        current_fold = NULL;
+      }
     }
   }
 
@@ -2889,6 +2916,14 @@ win_line (
     int has_match_conc = 0;  ///< match wants to conceal
     // int has_match_fold = 0;  ///< when inline fold
     bool did_decrement_ptr = false;
+
+    // Update current fold
+    // if (current_fold) {
+        // mark.endcol < vcol){
+      // update current_fold
+    // }
+
+
     // Skip this quickly when working on the text.
     if (draw_state != WL_LINE) {
       if (draw_state == WL_CMDLINE - 1 && n_extra == 0) {
@@ -3156,12 +3191,14 @@ win_line (
     // deal with conceal
     // MAY CRASH if used with conceal etc
     // TODO understand how conceal can print several characters
+    // TODO if not closed could also add some lightweight background color
     if (draw_state == WL_LINE
-        && (fp != NULL && fp->fd_flags == FD_CLOSED)
+        && (current_fold != NULL && current_fold->fd_flags == FD_CLOSED)
         && (fold_idx == 0)
     ) {
       fold_idx++;
       // ILOG("looking for mark id %lu ", fp->fd_mark_id);
+      fold_T *fp = current_fold;
       ExtmarkInfo mark = extmark_from_id(wp->w_buffer, fold_init(), fp->fd_mark_id);
       bool inline_fold = mark.row == mark.end_row;
 
@@ -3172,8 +3209,9 @@ win_line (
       // here we check if it's a fullline
       // code taken by fold_line
 
-      // use foldtext when using multiline fold
       if (!inline_fold && mark.col == 0) {
+        // use foldtext when using multiline fold
+
         char_attr = win_hl_attr(wp, HLF_FL);
         // saved_attr2 = win_hl_attr(wp, HLF_FL);
         // line_attr = win_hl_attr(wp, HLF_FL);
@@ -3199,63 +3237,54 @@ win_line (
         // } else {
         //   row = grid->Rows;
         // }
-
       }
       // check cols, check for && mark.endcol if endline
-      // else {
-      //   // saved_attr3
-      //   // char_attr = win_hl_attr(wp, HLF_FL);
+      else {
+        // saved_attr3
+        // char_attr = win_hl_attr(wp, HLF_FL);
 
-      //   char_attr = win_hl_attr(wp, HLF_FL);
-      //   extra_attr = win_hl_attr(wp, HLF_FLL); // for n_extra
+        char_attr = win_hl_attr(wp, HLF_FL);
+        extra_attr = win_hl_attr(wp, HLF_FLL); // for n_extra
 
-      //   if ((vcol < grid->Columns)
-      //     && ((inline_fold && mark.col <= vcol && vcol < mark.end_col)
-      //         || (!inline_fold && mark.col <= vcol))
-      //   ) {
-      //     char_attr = win_hl_attr(wp, HLF_FL);
-      //     // supposedly first time we enter this
-      //     if(true) {
+        if ((vcol < grid->Columns)
+          && ((inline_fold && mark.col <= vcol && vcol < mark.end_col)
+              || (!inline_fold && mark.col <= vcol))
+        ) {
+          char_attr = win_hl_attr(wp, HLF_FL);
 
-      //       // hardcode the character for now,
-      //       if (wp->w_p_lcs_chars.conceal != NUL) {
-      //         c = wp->w_p_lcs_chars.conceal;
-      //       } else {
-      //         c = 'X';
-      //       }
+          // TODO could use p_extra as well
+          // supposedly first time we enter this
+          // TODO use n_extra as well ?
+          if (true) {
 
-      //       if (n_extra > 0)
-      //         vcol_off += n_extra;
-      //       vcol += n_extra;
-      //       if (wp->w_p_wrap && n_extra > 0) {
-      //         if (wp->w_p_rl) {
-      //           col -= n_extra;
-      //           boguscols -= n_extra;
-      //         } else {
-      //           boguscols += n_extra;
-      //           col += n_extra;
-      //         }
-      //       }
-      //       n_extra = 0;
-      //       n_attr = 0;
-      //     } else if (n_skip == 0) {
-      //       is_concealing = TRUE;
-      //       n_skip = 1;
-      //     }
-      //     mb_c = c;
-      //     if (utf_char2len(c) > 1) {
-      //       mb_utf8 = true;
-      //       u8cc[0] = 0;
-      //       c = 0xc0;
-      //     } else {
-      //       mb_utf8 = false;              // don't draw as UTF-8
-      //     }
-      //   } else {
-      //     prev_syntax_id = 0;
-      //     is_concealing = FALSE;
-      //   }
-      // }
+            // hardcode the character for now,
+            if (wp->w_p_lcs_chars.conceal != NUL) {
+              c = wp->w_p_lcs_chars.conceal;
+            } else {
+              c = 'X';
+            }
 
+            // if (n_extra > 0)
+            //   vcol_off += n_extra;
+            // vcol += n_extra;
+
+            if (wp->w_p_wrap && n_extra > 0) {
+              if (wp->w_p_rl) {
+                col -= n_extra;
+                boguscols -= n_extra;
+              } else {
+                boguscols += n_extra;
+                col += n_extra;
+              }
+            }
+            n_extra = 0;
+            n_attr = 0;
+          }
+        } else {
+          prev_syntax_id = 0;
+          is_concealing = false;
+        }
+      }
 
     } // if there is a closed fold on the line
 

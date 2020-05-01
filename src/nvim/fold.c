@@ -116,23 +116,23 @@ uint64_t fold_init(void) {
 /// @param[in] gap array to search for matching folds
 /// @param lnum line whose folds we are looking for
 /// @param[out] out array of folds that contain the line 'lnum'
-void getFolds(garray_T *gap, linenr_T lnum, garray_T *out) {
-  fold_T *fp;
-  int level = 0;
-  linenr_T lnum_rel = lnum;
-  // Recursively search for a fold that contains "lnum".
-  while (true) {
-    if (!foldFind(gap, lnum_rel, &fp)) {
-      break;
-    }
-    assert(fp != 0);
-    GA_APPEND(fold_T *, out, fp);
-    // this is tricky ?!
-    gap = &fp->fd_nested;
-    lnum_rel -= fp->fd_top;
-    level++;
-  }
-}
+// void getFolds(garray_T *gap, linenr_T lnum, garray_T *out) {
+//   fold_T *fp;
+//   int level = 0;
+//   linenr_T lnum_rel = lnum;
+//   // Recursively search for a fold that contains "lnum".
+//   while (true) {
+//     if (!foldFind(gap, lnum_rel, &fp)) {
+//       break;
+//     }
+//     assert(fp != 0);
+//     GA_APPEND(fold_T *, out, fp);
+//     // this is tricky ?!
+//     gap = &fp->fd_nested;
+//     lnum_rel -= fp->fd_top;
+//     level++;
+//   }
+// }
 
 
 /* Exported folding functions. {{{1 */
@@ -171,18 +171,20 @@ bool hasFolding(linenr_T lnum, linenr_T *firstp, linenr_T *lastp)
 }
 
 /* hasFoldingWin() {{{2 */
-/// Search folds starting at lnum 
+/// Search folds starting at lnum
 /// @param lnum
 /// @param[out] first first line of fold containing lnum
 /// @param[out] lastp last line with a fold
+/// @param cache when true: use cached values of window
 /// @param[out] infop where to store fold info
+///
 /// @return true if range contains folds
 bool hasFoldingWin(
     win_T *const win,
     const linenr_T lnum,
     linenr_T *const firstp,
     linenr_T *const lastp,
-    const bool cache,             // when true: use cached values of window
+    const bool cache,
     foldinfo_T *const infop
 )
 {
@@ -1093,6 +1095,50 @@ void cloneFoldGrowArray(garray_T *from, garray_T *to)
 }
 
 /* foldFind() {{{2 */
+/// Search for line "lnum" in folds of growarray "gap".
+///
+/// @param[out] fpp fold struct for the fold that contains "lnum" or
+/// the first fold below it (careful: it can be beyond the end of the array!).
+/// @return false when there is no fold that contains "lnum".
+int foldFindAccum(const garray_T *gap, linenr_T lnum, garray_T *accum)
+{
+  linenr_T low, high;
+  fold_T      *fp;
+
+  /*
+   * Perform a binary search.
+   * "low" is lowest index of possible match.
+   * "high" is highest index of possible match.
+   */
+  fp = (fold_T *)gap->ga_data;
+  low = 0;
+  high = gap->ga_len - 1;
+  while (low <= high) {
+    linenr_T i = (low + high) / 2;
+    if (fp[i].fd_top > lnum)
+      /* fold below lnum, adjust high */
+      high = i - 1;
+    else if (fp[i].fd_top + fp[i].fd_len <= lnum)
+      /* fold above lnum, adjust low */
+      low = i + 1;
+    else {
+      /* lnum is inside this fold */
+      fold_T *fpp = fp + i;
+      GA_APPEND(fold_T *, accum, fpp);
+
+      // for (int i2 = 0; i2 < gap->ga_len; i2++) {
+        foldFindAccum(&fp->fd_nested, lnum, accum);
+      // }
+
+      return TRUE;
+    }
+  }
+  // *fpp = fp + low;
+
+  // foldFindAccum(&fp->fd_nested, lnum, accum);
+  return FALSE;
+}
+
 /// Search for line "lnum" in folds of growarray "gap".
 ///
 /// @param[out] fpp fold struct for the fold that contains "lnum" or
