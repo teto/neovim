@@ -104,6 +104,7 @@ static char_u *foldendmarker;
 static size_t foldendmarkerlen;
 
 uint64_t fold_init(void) {
+  // Move to foldInitWin ?
   int64_t ns = nvim_create_namespace(STATIC_CSTR_AS_STRING("folds"));
   fold_ns  = src2ns(&ns);
   // ILOG("Creating namespace for folds=%ld / %lu", ns, ns2);
@@ -1124,11 +1125,13 @@ int foldFindAccum(const garray_T *gap, linenr_T lnum, garray_T *accum)
     else {
       /* lnum is inside this fold */
       fold_T *fpp = fp + i;
-      GA_APPEND(fold_T *, accum, fpp);
+      if (fpp->fd_top == lnum) {
+        ILOG("Appended fd for lnum %ld", fpp->fd_top);
+        GA_APPEND(fold_T *, accum, fpp);
+      }
 
-      // for (int i2 = 0; i2 < gap->ga_len; i2++) {
-        foldFindAccum(&fp->fd_nested, lnum, accum);
-      // }
+      // or 1
+      foldFindAccum(&fp->fd_nested, 1, accum);
 
       return TRUE;
     }
@@ -1142,7 +1145,7 @@ int foldFindAccum(const garray_T *gap, linenr_T lnum, garray_T *accum)
 /// Search for line "lnum" in folds of growarray "gap".
 ///
 /// @param[out] fpp fold struct for the fold that contains "lnum" or
-/// the first fold below it (careful: it can be beyond the end of the array!).
+///             the first fold below it (careful: it can be beyond the end of the array!).
 /// @return false when there is no fold that contains "lnum".
 int foldFind(const garray_T *gap, linenr_T lnum, fold_T **fpp)
 {

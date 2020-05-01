@@ -2591,19 +2591,21 @@ win_line (
 
       ga_init(&folds, sizeof(fold_T *), 32);
       // this function might be broken
-      // change background of (un)folded 
-      // foldFindAccum(&wp->w_folds, lnum, &folds);
+      // change background of (un)folded
+      foldFindAccum(&wp->w_folds, lnum, &folds);
       // TODO clear at the end
-      // ILOG("Found %d folds", folds.ga_len);
-      // current_fold = (folds.ga_len != 0) ? &((fold_T *)folds.ga_data)[0] : NULL;
-      // if (folds.ga_len > 0)
-      //   ILOG("Current fold num %ld", current_fold->fd_top);
-
-      if(foldFind(&wp->w_folds, lnum, &current_fold)) {
-        ILOG("Current fold num %ld", current_fold->fd_top);
-      } else {
-        current_fold = NULL;
+      ILOG("Found %d folds for line %ld", folds.ga_len, lnum);
+      // current_fold = (folds.ga_len != 0) ? ((fold_T *)folds.ga_data) : NULL;
+      if (folds.ga_len > 0) {
+        current_fold = ((fold_T **)folds.ga_data)[0];
+        ILOG("Current fold num %ld len =%ld", current_fold->fd_top, current_fold->fd_len);
       }
+
+      // if(foldFind(&wp->w_folds, lnum, &current_fold)) {
+      //   ILOG("Current fold num %ld", current_fold->fd_top);
+      // } else {
+      //   current_fold = NULL;
+      // }
     }
   }
 
