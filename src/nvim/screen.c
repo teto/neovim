@@ -2243,7 +2243,7 @@ win_line (
 )
 {
 
-  int c = 0;                          // init for GCC
+  int c = 0;                          // init for GCC (temp variable)
   long vcol = 0;                      // virtual column (for tabs)
   long vcol_sbr = -1;                 // virtual column after showbreak
   long vcol_prev = -1;                // "vcol" of previous character
@@ -2255,11 +2255,12 @@ win_line (
   // TODO reuse this for folds as well
   char_u extra[57];                   // sign, line number and 'fdc' must
                                       // fit in here
-  int n_extra = 0;                    // number of extra chars
+  int n_extra = 0;                    // number of extra chars (used with p_extra/c)
   char_u      *p_extra = NULL;        // string of extra chars, plus NUL
                                       // must be used with n_extra
   char_u      *p_extra_free = NULL;   // p_extra_free needs to be freed before use
   int c_extra = NUL;                  // extra chars, all the same
+                                      // use with n_extra
   int c_final = NUL;                  // final char, mandatory if set
   int extra_attr = 0;                 // attributes when n_extra != 0
   static char_u *at_end_str = (char_u *)"";  // used for p_extra when displaying
@@ -2583,11 +2584,6 @@ win_line (
 
     // load active folds as well
     if (foldinfo->fi_level > 0) {
-      // search active folds
-      // uint64_t fold_ns = fold_init();
-      // int res = foldFind(&curwin->w_folds, lnum, &current);
-      // fold devient une decoration de l'extmark ?
-      // extmark_get();
 
       ga_init(&folds, sizeof(fold_T *), 32);
       // this function might be broken
@@ -2601,6 +2597,9 @@ win_line (
         ILOG("Current fold num %ld len =%ld", current_fold->fd_top, current_fold->fd_len);
       }
 
+      // TODO we could use an advance_fold similar to advance_color_col
+
+      // this works
       // if(foldFind(&wp->w_folds, lnum, &current_fold)) {
       //   ILOG("Current fold num %ld", current_fold->fd_top);
       // } else {
@@ -3196,9 +3195,13 @@ win_line (
     // TODO if not closed could also add some lightweight background color
     if (draw_state == WL_LINE
         && (current_fold != NULL && current_fold->fd_flags == FD_CLOSED)
-        && (fold_idx == 0)
+        && n_extra == 0
+        // && (fold_idx == 0)
     ) {
-      fold_idx++;
+      // fold_idx++;
+
+      colnr_T curcol = (colnr_T)(ptr - line);
+
       // ILOG("looking for mark id %lu ", fp->fd_mark_id);
       fold_T *fp = current_fold;
       ExtmarkInfo mark = extmark_from_id(wp->w_buffer, fold_init(), fp->fd_mark_id);
@@ -3206,12 +3209,12 @@ win_line (
 
       // ILOG("FP mark id %lu ", mark.mark_id);
       ILOG("FP: fold start %ld", fp->fd_top);
-      ILOG("FP vcol/col %ld/%d vs mark.col %d / end_col %d (inline fold %d)",
-            vcol, col, mark.col, mark.end_col, inline_fold);
+      ILOG("FP curcol/col %d/%d vs mark.col %d / end_col %d (inline fold %d)",
+            curcol, col, mark.col, mark.end_col, inline_fold);
       // here we check if it's a fullline
       // code taken by fold_line
 
-      if (!inline_fold && mark.col == 0) {
+      if (!inline_fold && mark.col == 0 && curcol == 0) {
         // use foldtext when using multiline fold
 
         char_attr = win_hl_attr(wp, HLF_FL);
@@ -3224,14 +3227,10 @@ win_line (
         n_extra = FOLD_TEXT_LEN;
         // n_extra = grid->Columns - col;
         ILOG("p_extra = %s ", p_extra);
-        // grid->Columns - col;
-        // n_extra = strlen(p_extra);
-        // make sure there is a NUL at end of p_extra
-        // c = 0;
         c_extra = NUL;
         c_final = NUL;
-    // TODO do the offset ?
-        // TODO change col ?
+
+        // TODO do the offset ?
         // Pretend we have finished updating the window.  Except when
         // 'cursorcolumn' is set.
         // if (wp->w_p_cuc) {
@@ -3240,18 +3239,21 @@ win_line (
         //   row = grid->Rows;
         // }
       }
-      // check cols, check for && mark.endcol if endline
       else {
+        // deal with inline folds
         // saved_attr3
         // char_attr = win_hl_attr(wp, HLF_FL);
 
         char_attr = win_hl_attr(wp, HLF_FL);
         extra_attr = win_hl_attr(wp, HLF_FLL); // for n_extra
-
-        if ((vcol < grid->Columns)
-          && ((inline_fold && mark.col <= vcol && vcol < mark.end_col)
-              || (!inline_fold && mark.col <= vcol))
+        ILOG("Checking inlinefolds curcol=%d", curcol);
+        // if curre
+        if (
+            // (vcol < grid->Columns)
+            ((inline_fold && mark.col <= curcol && curcol <= mark.end_col)
+              || (!inline_fold && mark.col <= curcol))
         ) {
+          // display inline fold
           char_attr = win_hl_attr(wp, HLF_FL);
 
           // TODO could use p_extra as well
@@ -3266,26 +3268,15 @@ win_line (
               c = 'X';
             }
 
-            // if (n_extra > 0)
-            //   vcol_off += n_extra;
-            // vcol += n_extra;
-
-            if (wp->w_p_wrap && n_extra > 0) {
-              if (wp->w_p_rl) {
-                col -= n_extra;
-                boguscols -= n_extra;
-              } else {
-                boguscols += n_extra;
-                col += n_extra;
-              }
-            }
-            n_extra = 0;
-            n_attr = 0;
+            c_extra = c;
+            n_extra = 1;
+            n_attr = char_attr;
           }
-        } else {
-          prev_syntax_id = 0;
-          is_concealing = false;
         }
+        // else {
+        //   prev_syntax_id = 0;
+        //   is_concealing = false;
+        // }
       }
 
     } // if there is a closed fold on the line
