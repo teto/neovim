@@ -2351,7 +2351,7 @@ win_line (
   bool do_virttext = false;             // draw virtual text for this line
 
   // fold related information
-  int fold_idx = 0;                     // last check fold
+  // int fold_idx = 0;                     // last check fold
   // TODO replace afterwards temporary memory (or with extra)
   // TODO reuse 'extra' instead
   char_u buf_fold[FOLD_TEXT_LEN];
@@ -3196,11 +3196,11 @@ win_line (
     if (draw_state == WL_LINE
         && (current_fold != NULL && current_fold->fd_flags == FD_CLOSED)
         && n_extra == 0
-        // && (fold_idx == 0)
     ) {
-      // fold_idx++;
 
-      colnr_T curcol = (colnr_T)(ptr - line);
+      // we can't use this 
+      // colnr_T curcol = (colnr_T)(ptr - line);
+      colnr_T curcol = vcol;
 
       // ILOG("looking for mark id %lu ", fp->fd_mark_id);
       fold_T *fp = current_fold;
@@ -3208,9 +3208,9 @@ win_line (
       bool inline_fold = mark.row == mark.end_row;
 
       // ILOG("FP mark id %lu ", mark.mark_id);
-      ILOG("FP: fold start %ld", fp->fd_top);
-      ILOG("FP curcol/col %d/%d vs mark.col %d / end_col %d (inline fold %d)",
-            curcol, col, mark.col, mark.end_col, inline_fold);
+      ILOG("FP: fold top %ld", fp->fd_top);
+      ILOG("FP curcol %d / vcol %ld vs mark.col %d (inline fold %d)", 
+            curcol, vcol, mark.col, inline_fold);
       // here we check if it's a fullline
       // code taken by fold_line
 
@@ -3230,14 +3230,6 @@ win_line (
         c_extra = NUL;
         c_final = NUL;
 
-        // TODO do the offset ?
-        // Pretend we have finished updating the window.  Except when
-        // 'cursorcolumn' is set.
-        // if (wp->w_p_cuc) {
-        //   row = wp->w_cline_row + wp->w_cline_height;
-        // } else {
-        //   row = grid->Rows;
-        // }
       }
       else {
         // deal with inline folds
@@ -3246,20 +3238,20 @@ win_line (
 
         char_attr = win_hl_attr(wp, HLF_FL);
         extra_attr = win_hl_attr(wp, HLF_FLL); // for n_extra
-        ILOG("Checking inlinefolds curcol=%d", curcol);
+        ILOG("Checking inlinefold %d curcol=%d", inline_fold, curcol);
+        ILOG("FP curcol %d vs mark.col %d / end_col %d ",
+              curcol, mark.col, mark.end_col);
         // if curre
-        if (
-            // (vcol < grid->Columns)
-            ((inline_fold && mark.col <= curcol && curcol <= mark.end_col)
-              || (!inline_fold && mark.col <= curcol))
+        if ( ((inline_fold && (mark.col <= curcol) && curcol < mark.end_col) || (!inline_fold && mark.col <= curcol))
+             && n_extra == 0
         ) {
           // display inline fold
           char_attr = win_hl_attr(wp, HLF_FL);
+          n_attr = win_hl_attr(wp, HLF_FL);
 
           // TODO could use p_extra as well
           // supposedly first time we enter this
           // TODO use n_extra as well ?
-          if (true) {
 
             // hardcode the character for now,
             if (wp->w_p_lcs_chars.conceal != NUL) {
@@ -3268,15 +3260,14 @@ win_line (
               c = 'X';
             }
 
+            // TODO add a voffset
+            // snprintf(buf_fold, "...", )
+            c_final = NUL;
             c_extra = c;
             n_extra = 1;
             n_attr = char_attr;
-          }
+            p_extra = NULL;
         }
-        // else {
-        //   prev_syntax_id = 0;
-        //   is_concealing = false;
-        // }
       }
 
     } // if there is a closed fold on the line
@@ -4666,6 +4657,9 @@ win_line (
     cap_col = 0;
   }
 
+  // TODO free the folds
+  // GA_DEEP_CLEAR_PTR()
+  // xfree(folds.)
   xfree(p_extra_free);
   xfree(luatext);
   return row;
