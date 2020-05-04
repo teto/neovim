@@ -1865,280 +1865,302 @@ static int line_putchar(LineState *s, schar_T *dest, int maxcells, bool rl)
 /*
  * Display one folded line.
  */
-static void fold_line(win_T *wp, long fold_count, foldinfo_T *foldinfo, linenr_T lnum, int row)
-{
-  char_u buf[FOLD_TEXT_LEN];
-  pos_T       *top, *bot;
-  linenr_T lnume = lnum + fold_count - 1;
-  int len;
-  char_u      *text;
-  int fdc;
-  int col;
-  int txtcol;
-  int off;
+// static void fold_line(win_T *wp, long fold_count, foldinfo_T *foldinfo, linenr_T lnum, int row)
+// {
+//   char_u buf[FOLD_TEXT_LEN];
+//   pos_T       *top, *bot;
+//   linenr_T lnume = lnum + fold_count - 1;
+//   int len;
+//   char_u      *text;
+//   int fdc;
+//   int col;
+//   int txtcol;
+//   int off;
 
-  /* Build the fold line:
-   * 1. Add the cmdwin_type for the command-line window
-   * 2. Add the 'foldcolumn'
-   * 3. Add the 'number' or 'relativenumber' column
-   * 4. Compose the text
-   * 5. Add the text
-   * 6. set highlighting for the Visual area an other text
-   */
-  col = 0;
-  off = 0;
+//   /* Build the fold line:
+//    * 1. Add the cmdwin_type for the command-line window
+//    * 2. Add the 'foldcolumn'
+//    * 3. Add the 'number' or 'relativenumber' column
+//    * 4. Compose the text
+//    * 5. Add the text
+//    * 6. set highlighting for the Visual area an other text
+//    */
+//   col = 0;
+//   off = 0;
 
-  /*
-   * 1. Add the cmdwin_type for the command-line window
-   * Ignores 'rightleft', this window is never right-left.
-   */
-  if (cmdwin_type != 0 && wp == curwin) {
-    schar_from_ascii(linebuf_char[off], cmdwin_type);
-    linebuf_attr[off] = win_hl_attr(wp, HLF_AT);
-    col++;
-  }
+//   /*
+//    * 1. Add the cmdwin_type for the command-line window
+//    * Ignores 'rightleft', this window is never right-left.
+//    */
+//   if (cmdwin_type != 0 && wp == curwin) {
+//     schar_from_ascii(linebuf_char[off], cmdwin_type);
+//     linebuf_attr[off] = win_hl_attr(wp, HLF_AT);
+//     col++;
+//   }
 
-// pos/value/limit (number of elements to set)
-# define RL_MEMSET(p, v, l) \
-  do { \
-    if (wp->w_p_rl) { \
-      for (int ri = 0; ri < l; ri++) { \
-        linebuf_attr[off + (wp->w_grid.Columns - (p) - (l)) + ri] = v; \
-      } \
-    } else { \
-      for (int ri = 0; ri < l; ri++) { \
-        linebuf_attr[off + (p) + ri] = v; \
-      } \
-    } \
-  } while (0)
+// // pos/value/limit (number of elements to set)
+// # define RL_MEMSET(p, v, l) \
+//   do { \
+//     if (wp->w_p_rl) { \
+//       for (int ri = 0; ri < l; ri++) { \
+//         linebuf_attr[off + (wp->w_grid.Columns - (p) - (l)) + ri] = v; \
+//       } \
+//     } else { \
+//       for (int ri = 0; ri < l; ri++) { \
+//         linebuf_attr[off + (p) + ri] = v; \
+//       } \
+//     } \
+//   } while (0)
 
-  // 2. Add the 'foldcolumn'
-  // Reduce the width when there is not enough space.
-  fdc = compute_foldcolumn(wp, col);
-  if (fdc > 0) {
-    fill_foldcolumn(buf, wp, true, lnum);
-    const char_u *it = &buf[0];
-    for (int i = 0; i < fdc; i++) {
-      int mb_c = mb_ptr2char_adv(&it);
-      if (wp->w_p_rl) {
-          schar_from_char(linebuf_char[off + wp->w_grid.Columns - i - 1 - col],
-                          mb_c);
-      } else {
-        schar_from_char(linebuf_char[off + col + i], mb_c);
-      }
-    }
-    RL_MEMSET(col, win_hl_attr(wp, HLF_FC), fdc);
-    col += fdc;
-  }
+//   // 2. Add the 'foldcolumn'
+//   // Reduce the width when there is not enough space.
+//   fdc = compute_foldcolumn(wp, col);
+//   if (fdc > 0) {
+//     fill_foldcolumn(buf, wp, true, lnum);
+//     const char_u *it = &buf[0];
+//     for (int i = 0; i < fdc; i++) {
+//       int mb_c = mb_ptr2char_adv(&it);
+//       if (wp->w_p_rl) {
+//           schar_from_char(linebuf_char[off + wp->w_grid.Columns - i - 1 - col],
+//                           mb_c);
+//       } else {
+//         schar_from_char(linebuf_char[off + col + i], mb_c);
+//       }
+//     }
+//     RL_MEMSET(col, win_hl_attr(wp, HLF_FC), fdc);
+//     col += fdc;
+//   }
 
 
-  /* Set all attributes of the 'number' or 'relativenumber' column and the
-   * text */
-  // TODO(teto): use endcol as well for the limit
-  ILOG("col %d + startcol %d", col, foldinfo->fi_startcol);
-  // Here is the bug
-  RL_MEMSET(col, wp->w_hl_attr_normal, foldinfo->fi_startcol);
-  RL_MEMSET(col + foldinfo->fi_startcol, win_hl_attr(wp, HLF_FL),
-            wp->w_grid.Columns - col - foldinfo->fi_startcol - 1);
+//   /* Set all attributes of the 'number' or 'relativenumber' column and the
+//    * text */
+//   // TODO(teto): use endcol as well for the limit
+//   ILOG("col %d + startcol %d", col, foldinfo->fi_startcol);
+//   // Here is the bug
+//   RL_MEMSET(col, wp->w_hl_attr_normal, foldinfo->fi_startcol);
+//   RL_MEMSET(col + foldinfo->fi_startcol, win_hl_attr(wp, HLF_FL),
+//             wp->w_grid.Columns - col - foldinfo->fi_startcol - 1);
 
-  // If signs are being displayed, add spaces.
-  if (win_signcol_count(wp) > 0) {
-      len = wp->w_grid.Columns - col;
-      if (len > 0) {
-          int len_max = win_signcol_width(wp) * win_signcol_count(wp);
-          if (len > len_max) {
-              len = len_max;
-          }
-          char_u space_buf[18] = "                  ";
-          assert((size_t)len_max <= sizeof(space_buf));
-          copy_text_attr(off + col, space_buf, len,
-                         win_hl_attr(wp, HLF_FL));
-          col += len;
-      }
-  }
+//   // If signs are being displayed, add spaces.
+//   if (win_signcol_count(wp) > 0) {
+//       len = wp->w_grid.Columns - col;
+//       if (len > 0) {
+//           int len_max = win_signcol_width(wp) * win_signcol_count(wp);
+//           if (len > len_max) {
+//               len = len_max;
+//           }
+//           char_u space_buf[18] = "                  ";
+//           assert((size_t)len_max <= sizeof(space_buf));
+//           copy_text_attr(off + col, space_buf, len,
+//                          win_hl_attr(wp, HLF_FL));
+//           col += len;
+//       }
+//   }
 
-  /*
-   * 3. Add the 'number' or 'relativenumber' column
-   */
-  if (wp->w_p_nu || wp->w_p_rnu) {
-    len = wp->w_grid.Columns - col;
-    if (len > 0) {
-      int w = number_width(wp);
-      long num;
-      char *fmt = "%*ld ";
+//   /*
+//    * 3. Add the 'number' or 'relativenumber' column
+//    */
+//   if (wp->w_p_nu || wp->w_p_rnu) {
+//     len = wp->w_grid.Columns - col;
+//     if (len > 0) {
+//       int w = number_width(wp);
+//       long num;
+//       char *fmt = "%*ld ";
 
-      if (len > w + 1)
-        len = w + 1;
+//       if (len > w + 1)
+//         len = w + 1;
 
-      if (wp->w_p_nu && !wp->w_p_rnu)
-        /* 'number' + 'norelativenumber' */
-        num = (long)lnum;
-      else {
-        /* 'relativenumber', don't use negative numbers */
-        num = labs((long)get_cursor_rel_lnum(wp, lnum));
-        if (num == 0 && wp->w_p_nu && wp->w_p_rnu) {
-          /* 'number' + 'relativenumber': cursor line shows absolute
-           * line number */
-          num = lnum;
-          fmt = "%-*ld ";
-        }
-      }
+//       if (wp->w_p_nu && !wp->w_p_rnu)
+//         /* 'number' + 'norelativenumber' */
+//         num = (long)lnum;
+//       else {
+//         /* 'relativenumber', don't use negative numbers */
+//         num = labs((long)get_cursor_rel_lnum(wp, lnum));
+//         if (num == 0 && wp->w_p_nu && wp->w_p_rnu) {
+//           /* 'number' + 'relativenumber': cursor line shows absolute
+//            * line number */
+//           num = lnum;
+//           fmt = "%-*ld ";
+//         }
+//       }
 
-      snprintf((char *)buf, FOLD_TEXT_LEN, fmt, w, num);
-      if (wp->w_p_rl) {
-        // the line number isn't reversed
-        copy_text_attr(off + wp->w_grid.Columns - len - col, buf, len,
-                       win_hl_attr(wp, HLF_FL));
-      } else {
-        copy_text_attr(off + col, buf, len, win_hl_attr(wp, HLF_FL));
-      }
-      col += len;
-    }
-  }
+//       snprintf((char *)buf, FOLD_TEXT_LEN, fmt, w, num);
+//       if (wp->w_p_rl) {
+//         // the line number isn't reversed
+//         copy_text_attr(off + wp->w_grid.Columns - len - col, buf, len,
+//                        win_hl_attr(wp, HLF_FL));
+//       } else {
+//         copy_text_attr(off + col, buf, len, win_hl_attr(wp, HLF_FL));
+//       }
+//       col += len;
+//     }
+//   }
 
-  /*
-   * 4. Compose the folded-line string with 'foldtext', if set.
-   */
-  {
-    // we want to pass the starting/end columns startcol/endcol
-    fold_T *current = NULL;
-    // #include "nvim/globals.h"
-    uint64_t fold_ns = fold_init();
-    int res = foldFind(&curwin->w_folds, lnum, &current);
-    if (res) {
+//   /*
+//    * 4. Compose the folded-line string with 'foldtext', if set.
+//    */
+//   {
+//     // we want to pass the starting/end columns startcol/endcol
+//     fold_T *current = NULL;
+//     // #include "nvim/globals.h"
+//     uint64_t fold_ns = fold_init();
+//     int res = foldFind(&curwin->w_folds, lnum, &current);
+//     if (res) {
 
-      ExtmarkInfo mark = extmark_from_id(curbuf, fold_ns, current->fd_mark_id);
-      ILOG("Looked for extmark: fold_ns=%lu mark_id=%lu: resulting id=%lu",
-           fold_ns, current->fd_mark_id, mark.mark_id);
-      DEBUG_MARK(mark);
-      // if(mark.mark_id == 0)
-      foldinfo->fi_startcol = mark.col;
-      foldinfo->fi_endcol = mark.end_col;
-    }
-    ILOG("res= %d", res);
-  }
-  ILOG("columns start=%d / end=%d", foldinfo->fi_startcol, foldinfo->fi_endcol);
-  text = get_foldtext(wp, lnum, lnume, foldinfo, buf);
+//       ExtmarkInfo mark = extmark_from_id(curbuf, fold_ns, current->fd_mark_id);
+//       ILOG("Looked for extmark: fold_ns=%lu mark_id=%lu: resulting id=%lu",
+//            fold_ns, current->fd_mark_id, mark.mark_id);
+//       DEBUG_MARK(mark);
+//       // if(mark.mark_id == 0)
+//       foldinfo->fi_startcol = mark.col;
+//       foldinfo->fi_endcol = mark.end_col;
+//     }
+//     ILOG("res= %d", res);
+//   }
+//   ILOG("columns start=%d / end=%d", foldinfo->fi_startcol, foldinfo->fi_endcol);
+//   text = get_foldtext(wp, lnum, lnume, foldinfo, buf);
 
-  txtcol = col;         /* remember where text starts */
+//   txtcol = col;         /* remember where text starts */
 
-  // 5. move the text to linebuf_char[off].  Fill up with "fold".
-  //    Right-left text is put in columns 0 - number-col, normal text is put
-  //    in columns number-col - window-width.
-  col = text_to_screenline(wp, text, col, off);
+//   // 5. move the text to linebuf_char[off].  Fill up with "fold".
+//   //    Right-left text is put in columns 0 - number-col, normal text is put
+//   //    in columns number-col - window-width.
+//   int idx;
 
-  /* Fill the rest of the line with the fold filler */
-  if (wp->w_p_rl)
-    col -= txtcol;
+//   if (wp->w_p_rl) {
+//     idx = off;
+//   } else {
+//     idx = off + col;
+//   }
 
-  schar_T sc;
-  schar_from_char(sc, wp->w_p_fcs_chars.fold);
-  while (col < wp->w_grid.Columns
-         - (wp->w_p_rl ? txtcol : 0)
-         ) {
-    schar_copy(linebuf_char[off+col++], sc);
-  }
+//   LineState s = LINE_STATE(text);
 
-  if (text != buf)
-    xfree(text);
+//   while (*s.p != NUL) {
+//     // TODO(bfredl): cargo-culted from the old Vim code:
+//     // if(col + cells > wp->w_width - (wp->w_p_rl ? col : 0)) { break; }
+//     // This is obvious wrong. If Vim ever fixes this, solve for "cells" again
+//     // in the correct condition.
+//     int maxcells = wp->w_grid.Columns - col - (wp->w_p_rl ? col : 0);
+//     int cells = line_putchar(&s, &linebuf_char[idx], maxcells, wp->w_p_rl);
+//     if (cells == -1) {
+//       break;
+//     }
+//     col += cells;
+//     idx += cells;
+//   }
 
-  /*
-   * 6. set highlighting for the Visual area an other text.
-   * If all folded lines are in the Visual area, highlight the line.
-   */
-  if (VIsual_active && wp->w_buffer == curwin->w_buffer) {
-    if (ltoreq(curwin->w_cursor, VIsual)) {
-      /* Visual is after curwin->w_cursor */
-      top = &curwin->w_cursor;
-      bot = &VIsual;
-    } else {
-      /* Visual is before curwin->w_cursor */
-      top = &VIsual;
-      bot = &curwin->w_cursor;
-    }
-    if (lnum >= top->lnum
-        && lnume <= bot->lnum
-        && (VIsual_mode != 'v'
-            || ((lnum > top->lnum
-                 || (lnum == top->lnum
-                     && top->col == 0))
-                && (lnume < bot->lnum
-                    || (lnume == bot->lnum
-                        && (bot->col - (*p_sel == 'e'))
-                        >= (colnr_T)STRLEN(ml_get_buf(wp->w_buffer, lnume,
-                                FALSE))))))) {
-      if (VIsual_mode == Ctrl_V) {
-        // Visual block mode: highlight the chars part of the block
-        if (wp->w_old_cursor_fcol + txtcol < (colnr_T)wp->w_grid.Columns) {
-          if (wp->w_old_cursor_lcol != MAXCOL
-              && wp->w_old_cursor_lcol + txtcol
-              < (colnr_T)wp->w_grid.Columns) {
-            len = wp->w_old_cursor_lcol;
-          } else {
-            len = wp->w_grid.Columns - txtcol;
-          }
-          RL_MEMSET(wp->w_old_cursor_fcol + txtcol, win_hl_attr(wp, HLF_V),
-                    len - (int)wp->w_old_cursor_fcol);
-        }
-      } else {
-        // Set all attributes of the text
-        RL_MEMSET(txtcol, win_hl_attr(wp, HLF_V), wp->w_grid.Columns - txtcol);
-      }
-    }
-  }
+//   /* Fill the rest of the line with the fold filler */
+//   if (wp->w_p_rl)
+//     col -= txtcol;
 
-  // Show colorcolumn in the fold line, but let cursorcolumn override it.
-  if (wp->w_p_cc_cols) {
-    int i = 0;
-    int j = wp->w_p_cc_cols[i];
-    int old_txtcol = txtcol;
+//   schar_T sc;
+//   schar_from_char(sc, wp->w_p_fcs_chars.fold);
+//   while (col < wp->w_grid.Columns
+//          - (wp->w_p_rl ? txtcol : 0)
+//          ) {
+//     schar_copy(linebuf_char[off+col++], sc);
+//   }
 
-    while (j > -1) {
-      txtcol += j;
-      if (wp->w_p_wrap) {
-        txtcol -= wp->w_skipcol;
-      } else {
-        txtcol -= wp->w_leftcol;
-      }
-      if (txtcol >= 0 && txtcol < wp->w_grid.Columns) {
-        linebuf_attr[off + txtcol] =
-          hl_combine_attr(linebuf_attr[off + txtcol], win_hl_attr(wp, HLF_MC));
-      }
-      txtcol = old_txtcol;
-      j = wp->w_p_cc_cols[++i];
-    }
-  }
+//   if (text != buf)
+//     xfree(text);
 
-  /* Show 'cursorcolumn' in the fold line. */
-  if (wp->w_p_cuc) {
-    txtcol += wp->w_virtcol;
-    if (wp->w_p_wrap)
-      txtcol -= wp->w_skipcol;
-    else
-      txtcol -= wp->w_leftcol;
-    if (txtcol >= 0 && txtcol < wp->w_grid.Columns) {
-      linebuf_attr[off + txtcol] = hl_combine_attr(
-          linebuf_attr[off + txtcol], win_hl_attr(wp, HLF_CUC));
-    }
-  }
+//   /*
+//    * 6. set highlighting for the Visual area an other text.
+//    * If all folded lines are in the Visual area, highlight the line.
+//    */
+//   if (VIsual_active && wp->w_buffer == curwin->w_buffer) {
+//     if (ltoreq(curwin->w_cursor, VIsual)) {
+//       /* Visual is after curwin->w_cursor */
+//       top = &curwin->w_cursor;
+//       bot = &VIsual;
+//     } else {
+//       /* Visual is before curwin->w_cursor */
+//       top = &VIsual;
+//       bot = &curwin->w_cursor;
+//     }
+//     if (lnum >= top->lnum
+//         && lnume <= bot->lnum
+//         && (VIsual_mode != 'v'
+//             || ((lnum > top->lnum
+//                  || (lnum == top->lnum
+//                      && top->col == 0))
+//                 && (lnume < bot->lnum
+//                     || (lnume == bot->lnum
+//                         && (bot->col - (*p_sel == 'e'))
+//                         >= (colnr_T)STRLEN(ml_get_buf(wp->w_buffer, lnume,
+//                                 FALSE))))))) {
+//       if (VIsual_mode == Ctrl_V) {
+//         // Visual block mode: highlight the chars part of the block
+//         if (wp->w_old_cursor_fcol + txtcol < (colnr_T)wp->w_grid.Columns) {
+//           if (wp->w_old_cursor_lcol != MAXCOL
+//               && wp->w_old_cursor_lcol + txtcol
+//               < (colnr_T)wp->w_grid.Columns) {
+//             len = wp->w_old_cursor_lcol;
+//           } else {
+//             len = wp->w_grid.Columns - txtcol;
+//           }
+//           RL_MEMSET(wp->w_old_cursor_fcol + txtcol, win_hl_attr(wp, HLF_V),
+//                     len - (int)wp->w_old_cursor_fcol);
+//         }
+//       } else {
+//         // Set all attributes of the text
+//         RL_MEMSET(txtcol, win_hl_attr(wp, HLF_V), wp->w_grid.Columns - txtcol);
+//       }
+//     }
+//   }
 
-  grid_put_linebuf(&wp->w_grid, row, 0, wp->w_grid.Columns, wp->w_grid.Columns,
-                   false, wp, wp->w_hl_attr_normal, false);
+//   // Show colorcolumn in the fold line, but let cursorcolumn override it.
+//   if (wp->w_p_cc_cols) {
+//     int i = 0;
+//     int j = wp->w_p_cc_cols[i];
+//     int old_txtcol = txtcol;
 
-  /*
-   * Update w_cline_height and w_cline_folded if the cursor line was
-   * updated (saves a call to plines() later).
-   */
-  if (wp == curwin
-      && lnum <= curwin->w_cursor.lnum
-      && lnume >= curwin->w_cursor.lnum) {
-    curwin->w_cline_row = row;
-    curwin->w_cline_height = 1;
-    curwin->w_cline_folded = true;
-    curwin->w_valid |= (VALID_CHEIGHT|VALID_CROW);
-    conceal_cursor_used = conceal_cursor_line(curwin);
-  }
-}
+//     while (j > -1) {
+//       txtcol += j;
+//       if (wp->w_p_wrap) {
+//         txtcol -= wp->w_skipcol;
+//       } else {
+//         txtcol -= wp->w_leftcol;
+//       }
+//       if (txtcol >= 0 && txtcol < wp->w_grid.Columns) {
+//         linebuf_attr[off + txtcol] =
+//           hl_combine_attr(linebuf_attr[off + txtcol], win_hl_attr(wp, HLF_MC));
+//       }
+//       txtcol = old_txtcol;
+//       j = wp->w_p_cc_cols[++i];
+//     }
+//   }
+
+//   /* Show 'cursorcolumn' in the fold line. */
+//   if (wp->w_p_cuc) {
+//     txtcol += wp->w_virtcol;
+//     if (wp->w_p_wrap)
+//       txtcol -= wp->w_skipcol;
+//     else
+//       txtcol -= wp->w_leftcol;
+//     if (txtcol >= 0 && txtcol < wp->w_grid.Columns) {
+//       linebuf_attr[off + txtcol] = hl_combine_attr(
+//           linebuf_attr[off + txtcol], win_hl_attr(wp, HLF_CUC));
+//     }
+//   }
+
+//   grid_put_linebuf(&wp->w_grid, row, 0, wp->w_grid.Columns, wp->w_grid.Columns,
+//                    false, wp, wp->w_hl_attr_normal, false);
+
+//   /*
+//    * Update w_cline_height and w_cline_folded if the cursor line was
+//    * updated (saves a call to plines() later).
+//    */
+//   if (wp == curwin
+//       && lnum <= curwin->w_cursor.lnum
+//       && lnume >= curwin->w_cursor.lnum) {
+//     curwin->w_cline_row = row;
+//     curwin->w_cline_height = 1;
+//     curwin->w_cline_folded = true;
+//     curwin->w_valid |= (VALID_CHEIGHT|VALID_CROW);
+//     conceal_cursor_used = conceal_cursor_line(curwin);
+//   }
+// }
 
 
 /// Copy "buf[len]" to linebuf_char["off"] and set attributes to "attr".
@@ -3398,7 +3420,8 @@ win_line (
               if (cur != NULL
                   && shl != &search_hl
                   && (syn_name2id((char_u *)"Conceal") == cur->hlg_id
-                      || syn_name2id((char_u *)"FoldedLight") == cur->hlg_id)
+                      // || syn_name2id((char_u *)"FoldedLight") == cur->hlg_id
+                      )
                       ) {
                 has_match_conc = v == (long)shl->startcol ? 2 : 1;
                 match_conc = cur->conceal_char;
@@ -4079,8 +4102,6 @@ win_line (
         }
       }
 
-
-
       // check length too
       if (current_fold != NULL ) {
         // Cheat and enable conceal mode if we are entering a fold
@@ -4102,6 +4123,8 @@ win_line (
                   ){
           // first time we reach the closed fold
           fold_col = mark.end_col - mark.col;
+          // TODO we could adjust the representation to
+          // n_extra = fold_col - 1;
           ILOG("Hitting first fold column, setting fold_col to %d", fold_col);
         }
       }
@@ -4113,16 +4136,19 @@ win_line (
         // 2 when 2 : 1;
         has_match_conc = 1;
         ILOG("fold_col decreased to %d", fold_col);
+        match_conc = 0;
 
         if (fold_col <= 0) {
-          ILOG("fold_col reached ");
-          has_match_conc = 2;  // to display the character
+          has_match_conc = 5;  // 5 is special value for folds to display the character
           match_conc = 'X';     // TODO use a strange unicode char
+          ILOG("fold_col reached: previous n_extra %d", n_extra);
+
           // check for another fold
         }
       }
 
       // deal with conceal
+
       if ((wp->w_p_cole > 0
           && (wp != curwin || lnum != wp->w_cursor.lnum
               || conceal_cursor_line(wp))
@@ -4133,7 +4159,7 @@ win_line (
           // if inline fold
           || (fold_col >= 0 && has_match_conc > 0)
           ) {
-        ILOG("Entering into conceal mode %c", match_conc);
+        ILOG("Entering into conceal mode %d", match_conc);
         // TODO could be HL_FOLDEDL
         char_attr = win_hl_attr(wp, HLF_CONCEAL);
         if ((prev_syntax_id != syntax_seqnr || has_match_conc > 1)
@@ -4154,6 +4180,7 @@ win_line (
 
           prev_syntax_id = syntax_seqnr;
 
+          ILOG("Conceal n_extra %d", n_extra);
           if (n_extra > 0)
             vcol_off += n_extra;
           vcol += n_extra;
@@ -4171,6 +4198,7 @@ win_line (
         } else if (n_skip == 0) {
           is_concealing = TRUE;
           n_skip = 1;
+          ILOG("Skipped once");
         }
         mb_c = c;
         if (utf_char2len(c) > 1) {
@@ -4189,14 +4217,16 @@ win_line (
         // not showing the '>', put pointer back to avoid getting stuck
         ptr++;
       }
-    }
+    } // end of n_extra == 0
 
     /* In the cursor line and we may be concealing characters: correct
      * the cursor column when we reach its position. */
+    // TODO
     if (!did_wcol && draw_state == WL_LINE
         && wp == curwin && lnum == wp->w_cursor.lnum
-        && conceal_cursor_line(wp)
+        && (conceal_cursor_line(wp) || has_match_conc == 5)
         && (int)wp->w_virtcol <= vcol + n_skip) {
+      ILOG("fixing wcol ");
       if (wp->w_p_rl) {
         wp->w_wcol = grid->Columns - col + boguscols - 1;
       } else {
@@ -4607,6 +4637,7 @@ win_line (
         ++off;
         ++col;
       }
+    // TODO here is where I should fix stuff
     } else if (wp->w_p_cole > 0 && is_concealing) {
       --n_skip;
       ++vcol_off;
