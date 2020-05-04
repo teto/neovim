@@ -5776,7 +5776,7 @@ static void f_matcharg(typval_T *argvars, typval_T *rettv, FunPtr fptr)
 static void f_matchdelete(typval_T *argvars, typval_T *rettv, FunPtr fptr)
 {
   rettv->vval.v_number = match_delete(curwin,
-                                      (int)tv_get_number(&argvars[0]), true);
+                                      (int)tv_get_number(&argvars[0]), true, true);
 }
 
 /*

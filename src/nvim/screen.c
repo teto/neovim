@@ -132,6 +132,7 @@ static schar_T *linebuf_char = NULL;
 static sattr_T *linebuf_attr = NULL;
 
 static match_T search_hl;       /* used for 'hlsearch' highlight matching */
+static match_T fold_hl;       /* used for 'hlsearch' highlight matching */
 
 static foldinfo_T win_foldinfo; /* info for 'foldcolumn' */
 
@@ -161,7 +162,13 @@ static bool resizing = false;
 #ifdef INCLUDE_GENERATED_DECLARATIONS
 # include "screen.c.generated.h"
 #endif
-#define SEARCH_HL_PRIORITY 0
+// #define SEARCH_HL_PRIORITY 0
+const int SEARCH_HL_PRIORITY = 0;
+
+
+#define DEBUG_MARK(m)  \
+      ILOG("FP mark row/col %d/%d (inline fold %d)", \
+           m.row, m.col, m.row == m.end_row);
 
 /*
  * Redraw the current window later, with update_screen(type).
@@ -1529,12 +1536,12 @@ static void win_update(win_T *wp)
         // 'relativenumber' set: The text doesn't need to be drawn, but
         // the number column nearly always does.
         foldedLines = foldedCount(wp, lnum, &win_foldinfo);
-        if (foldedLines != 0) {
-          fold_line(wp, foldedLines, &win_foldinfo, lnum, row);
-        } else {
+        // if (foldedLines != 0) {
+        //   fold_line(wp, foldedLines, &win_foldinfo, lnum, row);
+        // } else {
           // TODO pass &win_foldinfo and remove fold_line call
-          (void)win_line(wp, lnum, srow, wp->w_grid.Rows, true, true, NULL);
-        }
+          (void)win_line(wp, lnum, srow, wp->w_grid.Rows, true, true, &win_foldinfo);
+        // }
       }
 
       // This line does not need to be drawn, advance to the next one.
@@ -2357,6 +2364,13 @@ win_line (
   char_u buf_fold[FOLD_TEXT_LEN];
   garray_T folds = GA_EMPTY_INIT_VALUE; // folds on this line
   fold_T *current_fold = NULL;
+  matchitem_T *fold_cur;                     // points to the match list
+  match_T     *fold_match;                     // points to search_hl or a match
+  int fold_flag;                         // flag to indicate whether search_hl
+                                        // has been processed or not
+  listitem_T fold_listitems[11];            //< List items for
+  int fold_matchids[11];            //!< first item = number of entries, then match ids
+
 
   /* draw_state: items that are drawn in sequence: */
 #define WL_START        0               /* nothing done yet */
@@ -2582,8 +2596,12 @@ win_line (
     }
 
 
+    fold_matchids[0] = 0;
+    // tv_list_init_static(&fold_positions);
+
     // load active folds as well
     if (foldinfo->fi_level > 0) {
+      list_T fold_positions;                // store fold positions
 
       ga_init(&folds, sizeof(fold_T *), 32);
       // this function might be broken
@@ -2591,7 +2609,7 @@ win_line (
       foldFindAccum(&wp->w_folds, lnum, &folds);
       // TODO clear at the end
       ILOG("Found %d folds for line %ld", folds.ga_len, lnum);
-      // current_fold = (folds.ga_len != 0) ? ((fold_T *)folds.ga_data) : NULL;
+
       if (folds.ga_len > 0) {
         current_fold = ((fold_T **)folds.ga_data)[0];
         ILOG("Current fold num %ld len =%ld", current_fold->fd_top, current_fold->fd_len);
@@ -2605,6 +2623,52 @@ win_line (
       // } else {
       //   current_fold = NULL;
       // }
+
+      // TODO loop through this line's folds
+      for (int i = 0; i < folds.ga_len; i++) {
+        fold_T *fp = ((fold_T **)folds.ga_data)[i];
+        ExtmarkInfo mark = extmark_from_id(wp->w_buffer, fold_init(), fp->fd_mark_id);
+        bool inline_fold = mark.row == mark.end_row;
+        DEBUG_MARK(mark);
+        ILOG("fp closed ?: %d", fp->fd_flags == FD_CLOSED);
+        tv_list_init_static(&fold_positions);
+
+        // we want to match the thing only if fold is closed
+        if (inline_fold && fp->fd_flags == FD_CLOSED) {
+
+          // we could alloc/dealloc
+          listitem_T *item = &fold_listitems[i];
+          // item->li_tv.v_type = VAR_LIST;
+          int len = mark.end_col - mark.col;
+
+          list_T * local_pos = tv_list_alloc_ret(TV_LIST_ITEM_TV(item), 3);
+          // register line/col/byte length
+          tv_list_append_number(local_pos, mark.row + 1);
+          tv_list_append_number(local_pos, mark.col + 1);
+          tv_list_append_number(local_pos, len);
+
+          tv_list_append(&fold_positions, item);
+
+            // tv_list_append  tv_list_alloc(0)
+          // FoldedLight
+          // FoldInlineUnfolded
+          int ret = match_add(wp, (const char *)"FoldedLight", NULL, 2, -1,
+            &fold_positions, "X" // conceal char
+          );
+          tv_list_free(local_pos);
+
+          if (ret < 0) {
+            ELOG("Failed to register ");
+          } else {
+            // the redraw call seems useless
+            // redraw_win_later(wp, NOT_VALID);
+            ILOG("ADDED one match with id=%d len=%d", ret, len);
+            // record id
+            fold_matchids[0]++;
+            fold_matchids[fold_matchids[0]] = ret;
+          }
+        }
+      }
     }
   }
 
@@ -2914,17 +2978,8 @@ win_line (
   int sign_idx = 0;
   // Repeat for the whole displayed line.
   for (;; ) {
-    int has_match_conc = 0;  ///< match wants to conceal
-    // int has_match_fold = 0;  ///< when inline fold
+    int has_match_conc = 0;  ///< match wants to conceal (conceal level of char to display)
     bool did_decrement_ptr = false;
-
-    // Update current fold
-    // if (current_fold) {
-        // mark.endcol < vcol){
-      // update current_fold
-    // }
-
-
     // Skip this quickly when working on the text.
     if (draw_state != WL_LINE) {
       if (draw_state == WL_CMDLINE - 1 && n_extra == 0) {
@@ -3214,7 +3269,8 @@ win_line (
       // here we check if it's a fullline
       // code taken by fold_line
 
-      if (!inline_fold && mark.col == 0 && curcol == 0) {
+      // TODO make it work even when mark.col != 0
+      if (!inline_fold &&  mark.col <= curcol) {
         // use foldtext when using multiline fold
 
         char_attr = win_hl_attr(wp, HLF_FL);
@@ -3231,44 +3287,54 @@ win_line (
         c_final = NUL;
 
       }
-      else {
-        // deal with inline folds
-        // saved_attr3
-        // char_attr = win_hl_attr(wp, HLF_FL);
+      // else {
+      //   // deal with inline folds
+      //   // saved_attr3
+      //   // char_attr = win_hl_attr(wp, HLF_FL);
 
-        char_attr = win_hl_attr(wp, HLF_FL);
-        extra_attr = win_hl_attr(wp, HLF_FLL); // for n_extra
-        ILOG("Checking inlinefold %d curcol=%d", inline_fold, curcol);
-        ILOG("FP curcol %d vs mark.col %d / end_col %d ",
-              curcol, mark.col, mark.end_col);
+      //   // char_attr = win_hl_attr(wp, HLF_FL);
+      //   // extra_attr = win_hl_attr(wp, HLF_FLL); // for n_extra
+      //   ILOG("Checking inlinefold %d curcol=%d", inline_fold, curcol);
+      //   ILOG("FP curcol %d vs mark.col %d / end_col %d ",
+      //         curcol, mark.col, mark.end_col);
         // if curre
-        if ( ((inline_fold && (mark.col <= curcol) && curcol < mark.end_col) || (!inline_fold && mark.col <= curcol))
-             && n_extra == 0
-        ) {
-          // display inline fold
-          char_attr = win_hl_attr(wp, HLF_FL);
-          n_attr = win_hl_attr(wp, HLF_FL);
+        // if ( ((inline_fold && (mark.col <= curcol) && curcol < mark.end_col) || (!inline_fold && mark.col <= curcol))
+        //      // && n_extra == 0
+        // ) {
+        //   // display inline fold
 
-          // TODO could use p_extra as well
-          // supposedly first time we enter this
-          // TODO use n_extra as well ?
+        //   // TODO could use p_extra as well
+        //   // supposedly first time we enter this
+        //   // TODO use n_extra as well ?
 
-            // hardcode the character for now,
-            if (wp->w_p_lcs_chars.conceal != NUL) {
-              c = wp->w_p_lcs_chars.conceal;
-            } else {
-              c = 'X';
-            }
+        //     // hardcode the character for now,
+        //     if (wp->w_p_lcs_chars.conceal != NUL) {
+        //       c = wp->w_p_lcs_chars.conceal;
+        //     } else {
+        //       c = 'X';
+        //     }
 
-            // TODO add a voffset
-            // snprintf(buf_fold, "...", )
-            c_final = NUL;
-            c_extra = c;
-            n_extra = 1;
-            n_attr = char_attr;
-            p_extra = NULL;
-        }
-      }
+        //     // TODO add a voffset
+        //     // snprintf(buf_fold, "...", )
+        //     c_final = NUL;
+        //     c_extra = c;
+        //     n_extra = 1;
+
+        //     // see in conceal ?
+        //     // ptr++;
+        //     // vcol += n_extra;
+
+        //     n_attr = win_hl_attr(wp, HLF_FL);
+        //     char_attr = win_hl_attr(wp, HLF_FL);
+
+        //     // some kind of conceal
+        //     // if (n_extra > 0)
+        //     //   vcol_off += n_extra;
+
+        //     // n_attr = char_attr;
+        //     // p_extra = NULL;
+        // }
+      // }
 
     } // if there is a closed fold on the line
 
@@ -3286,7 +3352,6 @@ win_line (
                                         && (colnr_T)vcol == wp->w_virtcol))) {
         area_attr = 0;                          // stop highlighting
      }
-
 
       if (!n_extra) {
         /*
@@ -3329,7 +3394,9 @@ win_line (
               // the match.
               if (cur != NULL
                   && shl != &search_hl
-                  && syn_name2id((char_u *)"Conceal") == cur->hlg_id) {
+                  && (syn_name2id((char_u *)"Conceal") == cur->hlg_id
+                      || syn_name2id((char_u *)"FoldedLight") == cur->hlg_id)
+                      ) {
                 has_match_conc = v == (long)shl->startcol ? 2 : 1;
                 match_conc = cur->conceal_char;
               } else {
@@ -4657,11 +4724,25 @@ win_line (
     cap_col = 0;
   }
 
+  // tv_list_free_contents(&fold_positions);
+  ILOG("fold_matchids to remove %d", fold_matchids[0]);
+  // TODO clear fold matches
+  for(int i = 1; i <= fold_matchids[0]; i++) {
+    ILOG("MATT removing %d", fold_matchids[i]);
+
+    // ca entraine un redraw !
+    int ret = 0;
+    // ret = match_delete(wp, fold_matchids[i], true, false);
+    if (ret < 0) {
+      ELOG("Could not delete id %d", ret);
+    }
+
+  }
   // TODO free the folds
   // GA_DEEP_CLEAR_PTR()
   // xfree(folds.)
-  xfree(p_extra_free);
-  xfree(luatext);
+  XFREE_CLEAR(p_extra_free);
+  XFREE_CLEAR(luatext);
   return row;
 }
 
@@ -6025,21 +6106,21 @@ static void prepare_search_hl(win_T *wp, linenr_T lnum)
   }
 }
 
-/*
- * Search for a next 'hlsearch' or match.
- * Uses shl->buf.
- * Sets shl->lnum and shl->rm contents.
- * Note: Assumes a previous match is always before "lnum", unless
- * shl->lnum is zero.
- * Careful: Any pointers for buffer lines will become invalid.
- */
+/// Search for a next 'hlsearch' or match.
+/// Uses shl->buf.
+/// Sets shl->lnum and shl->rm contents.
+/// Note: Assumes a previous match is always before "lnum", unless
+/// shl->lnum is zero.
+/// Careful: Any pointers for buffer lines will become invalid.
+///
+/// @param[out] cur to retrieve match positions if any
 static void
 next_search_hl (
     win_T *win,
     match_T *shl,               /* points to search_hl or a match */
     linenr_T lnum,
     colnr_T mincol,                /* minimal column for a match */
-    matchitem_T *cur               /* to retrieve match positions if any */
+    matchitem_T *cur
 )
   FUNC_ATTR_NONNULL_ARG(2)
 {

@@ -120,6 +120,7 @@ typedef enum {
 } VarType;
 
 /// Structure that holds an internal variable value
+/// @see TV_INITIAL_VALUE
 typedef struct {
   VarType v_type;  ///< Variable type.
   VarLockStatus v_lock;  ///< Variable lock status.
@@ -161,6 +162,7 @@ struct listwatch_S {
 
 /// Structure to hold info about a list
 /// Order of members is optimized to reduce padding.
+/// @see tv_list_init_static
 struct listvar_S {
   listitem_T *lv_first;  ///< First item, NULL if none.
   listitem_T *lv_last;  ///< Last item, NULL if none.

@@ -9262,7 +9262,7 @@ static void ex_match(exarg_T *eap)
 
   // First clear any old pattern.
   if (!eap->skip) {
-    match_delete(curwin, id, false);
+    match_delete(curwin, id, false, true);
   }
 
   if (ends_excmd(*eap->arg)) {

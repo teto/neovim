@@ -6561,6 +6561,14 @@ void restore_buffer(bufref_T *save_curbuf)
 /// @param[in] id a desired ID 'id' can be specified
 ///               (greater than or equal to 1). -1 must be specified if no
 ///               particular ID is desired
+/// @param[in] grp highlight name
+/// @param[in] pat pattern
+/// @param[in] prio
+/// @param[in] pos_list a list of atmost MAXPOSMATCH positions.
+///                     Each position can be either:
+///                     - a number to highlight the whole line
+///                     - [line (, col (, bytelength)) ]
+///                     See :h matchaddpos for more.
 /// @param[in] conceal_char pointer to conceal replacement char
 /// @return ID of added match, -1 on failure.
 int match_add(win_T *wp, const char *const grp, const char *const pat,
@@ -6652,6 +6660,9 @@ int match_add(win_T *wp, const char *const grp, const char *const pat,
           goto fail;
         }
         if (lnum <= 0) {
+          emsgf(_("EXXXX: line should be > 0 (vs %ld) at position %d"), lnum,
+                (int)tv_list_idx_of_item(pos_list, li));
+          goto fail;
           continue;
         }
         m->pos.pos[i].lnum = lnum;
@@ -6668,6 +6679,9 @@ int match_add(win_T *wp, const char *const grp, const char *const pat,
           if (subli != NULL) {
             len = tv_get_number_chk(TV_LIST_ITEM_TV(subli), &error);
             if (len < 0) {
+              emsgf(_("EXXXX: len should be > 0 (vs %d) at position %d"), len,
+                    (int)tv_list_idx_of_item(pos_list, li));
+              goto fail;
               continue;
             }
             if (error) {
@@ -6736,6 +6750,7 @@ int match_add(win_T *wp, const char *const grp, const char *const pat,
     prev->next = m;
   m->next = cur;
 
+  // TODO HACK FIX
   redraw_win_later(wp, rtype);
   return id;
 
@@ -6746,8 +6761,10 @@ fail:
 
 
 /// Delete match with ID 'id' in the match list of window 'wp'.
-/// Print error messages if 'perr' is TRUE.
-int match_delete(win_T *wp, int id, int perr)
+/// @param id Match id to delete
+/// @param perr Print error messages if true
+/// @return 0 if successful, -1 otherwise
+int match_delete(win_T *wp, int id, int perr, int redraw)
 {
   matchitem_T *cur = wp->w_match_head;
   matchitem_T *prev = cur;
@@ -6794,7 +6811,8 @@ int match_delete(win_T *wp, int id, int perr)
     rtype = VALID;
   }
   xfree(cur);
-  redraw_win_later(wp, rtype);
+  if (redraw)
+    redraw_win_later(wp, rtype);
   return 0;
 }
 
