@@ -136,6 +136,36 @@ uint64_t fold_init(void) {
 // }
 
 
+/// get next closed inline fold
+/// or after col
+// int 
+fold_T *getNextInlineFold(
+    const win_T *wp,
+    const garray_T *folds
+    , int col
+    // , fold_T *fp
+)
+{
+// , const fold_T *current_fold) {
+  for (int i = 0; i < folds->ga_len; i++) {
+    // TODO check if ! extmark
+    fold_T *fp = ((fold_T **)folds->ga_data)[i];
+    // assert it's extmarks
+    // assert(it->fd_flags );
+    if( fp->fd_flags != FD_CLOSED) {
+      continue;
+    }
+    ExtmarkInfo mark = extmark_from_id(wp->w_buffer, fold_init(), fp->fd_mark_id);
+    bool inline_fold = mark.row == mark.end_row;
+    assert(inline_fold == true);
+    if ( col < mark.col) {
+      return fp;
+    }
+
+  }
+  return NULL;
+}
+
 /* Exported folding functions. {{{1 */
 /* copyFoldingState() {{{2 */
 /*

@@ -2010,6 +2010,7 @@ static void fold_line(win_T *wp, long fold_count, foldinfo_T *foldinfo, linenr_T
       ExtmarkInfo mark = extmark_from_id(curbuf, fold_ns, current->fd_mark_id);
       ILOG("Looked for extmark: fold_ns=%lu mark_id=%lu: resulting id=%lu",
            fold_ns, current->fd_mark_id, mark.mark_id);
+      DEBUG_MARK(mark);
       // if(mark.mark_id == 0)
       foldinfo->fi_startcol = mark.col;
       foldinfo->fi_endcol = mark.end_col;
@@ -2370,6 +2371,7 @@ win_line (
                                         // has been processed or not
   listitem_T fold_listitems[11];            //< List items for
   int fold_matchids[11];            //!< first item = number of entries, then match ids
+  int fold_col = 0;                 //!< number of times (column length) we need to conceal
 
 
   /* draw_state: items that are drawn in sequence: */
@@ -2625,50 +2627,50 @@ win_line (
       // }
 
       // TODO loop through this line's folds
-      for (int i = 0; i < folds.ga_len; i++) {
-        fold_T *fp = ((fold_T **)folds.ga_data)[i];
-        ExtmarkInfo mark = extmark_from_id(wp->w_buffer, fold_init(), fp->fd_mark_id);
-        bool inline_fold = mark.row == mark.end_row;
-        DEBUG_MARK(mark);
-        ILOG("fp closed ?: %d", fp->fd_flags == FD_CLOSED);
-        tv_list_init_static(&fold_positions);
+      // for (int i = 0; i < folds.ga_len; i++) {
+      //   fold_T *fp = ((fold_T **)folds.ga_data)[i];
+      //   ExtmarkInfo mark = extmark_from_id(wp->w_buffer, fold_init(), fp->fd_mark_id);
+      //   bool inline_fold = mark.row == mark.end_row;
+      //   DEBUG_MARK(mark);
+      //   ILOG("fp closed ?: %d", fp->fd_flags == FD_CLOSED);
+      //   tv_list_init_static(&fold_positions);
 
-        // we want to match the thing only if fold is closed
-        if (inline_fold && fp->fd_flags == FD_CLOSED) {
+      //   // we want to match the thing only if fold is closed
+      //   // if (inline_fold && fp->fd_flags == FD_CLOSED) {
 
-          // we could alloc/dealloc
-          listitem_T *item = &fold_listitems[i];
-          // item->li_tv.v_type = VAR_LIST;
-          int len = mark.end_col - mark.col;
+      //   //   // we could alloc/dealloc
+      //   //   listitem_T *item = &fold_listitems[i];
+      //   //   // item->li_tv.v_type = VAR_LIST;
+      //   //   int len = mark.end_col - mark.col;
 
-          list_T * local_pos = tv_list_alloc_ret(TV_LIST_ITEM_TV(item), 3);
-          // register line/col/byte length
-          tv_list_append_number(local_pos, mark.row + 1);
-          tv_list_append_number(local_pos, mark.col + 1);
-          tv_list_append_number(local_pos, len);
+      //   //   list_T * local_pos = tv_list_alloc_ret(TV_LIST_ITEM_TV(item), 3);
+      //   //   // register line/col/byte length
+      //   //   tv_list_append_number(local_pos, mark.row + 1);
+      //   //   tv_list_append_number(local_pos, mark.col + 1);
+      //   //   tv_list_append_number(local_pos, len);
 
-          tv_list_append(&fold_positions, item);
+      //   //   tv_list_append(&fold_positions, item);
 
-            // tv_list_append  tv_list_alloc(0)
-          // FoldedLight
-          // FoldInlineUnfolded
-          int ret = match_add(wp, (const char *)"FoldedLight", NULL, 2, -1,
-            &fold_positions, "X" // conceal char
-          );
-          tv_list_free(local_pos);
+      //   //     // tv_list_append  tv_list_alloc(0)
+      //   //   // FoldedLight
+      //   //   // FoldInlineUnfolded
+      //   //   int ret = match_add(wp, (const char *)"FoldedLight", NULL, 2, -1,
+      //   //     &fold_positions, "X" // conceal char
+      //   //   );
+      //   //   tv_list_free(local_pos);
 
-          if (ret < 0) {
-            ELOG("Failed to register ");
-          } else {
-            // the redraw call seems useless
-            // redraw_win_later(wp, NOT_VALID);
-            ILOG("ADDED one match with id=%d len=%d", ret, len);
-            // record id
-            fold_matchids[0]++;
-            fold_matchids[fold_matchids[0]] = ret;
-          }
-        }
-      }
+      //   //   if (ret < 0) {
+      //   //     ELOG("Failed to register ");
+      //   //   } else {
+      //   //     // the redraw call seems useless
+      //   //     // redraw_win_later(wp, NOT_VALID);
+      //   //     ILOG("ADDED one match with id=%d len=%d", ret, len);
+      //   //     // record id
+      //   //     fold_matchids[0]++;
+      //   //     fold_matchids[fold_matchids[0]] = ret;
+      //   //   }
+      //   // }
+      // }
     }
   }
 
@@ -2979,6 +2981,7 @@ win_line (
   // Repeat for the whole displayed line.
   for (;; ) {
     int has_match_conc = 0;  ///< match wants to conceal (conceal level of char to display)
+    // int has_match_fold = 0;  ///< match wants to conceal (conceal level of char to display)
     bool did_decrement_ptr = false;
     // Skip this quickly when working on the text.
     if (draw_state != WL_LINE) {
@@ -4076,13 +4079,59 @@ win_line (
         }
       }
 
+
+
+      if (fold_col > 0) {
+        // we are already in a fold, trigger conceal during length of fold
+        // (=initial value offold_col)
+        fold_col--;
+        // 2 when 2 : 1;
+        has_match_conc = 1;
+        ILOG("fold_col decreased to %d", fold_col);
+
+        if (fold_col <= 0) {
+          ILOG("fold_col reached ");
+          has_match_conc = 2;  // to display the character
+          match_conc = 'X';     // TODO use a strange unicode char
+          // check for another fold
+        }
+      }
+      // check length too
+      else if (current_fold != NULL ) {
+        // Cheat and enable conceal mode if we are entering a fold
+        fold_T *fp = current_fold;
+        ExtmarkInfo mark = extmark_from_id(wp->w_buffer, fold_init(), fp->fd_mark_id);
+        bool inline_fold = mark.row == mark.end_row;
+
+        DEBUG_MARK(mark);
+
+        // TODO adjust for the offset of previously folded folds ?
+        if (vcol >= mark.end_col) {
+          // TODO Try to search for the next fold on the line
+          fold_col = 0;
+          //
+          // getNextInlineFold(vcol);
+        } else if(fp->fd_flags ==  FD_CLOSED
+                  && (vcol >= mark.col + 1)
+                  && fold_col == 0
+                  ){
+          // first time we reach the closed fold
+          fold_col = mark.end_col - mark.col;
+          ILOG("Hitting first fold column, setting fold_col to %d", fold_col);
+        }
+      }
+
       // deal with conceal
-      if (wp->w_p_cole > 0
+      if ((wp->w_p_cole > 0
           && (wp != curwin || lnum != wp->w_cursor.lnum
               || conceal_cursor_line(wp))
           && ((syntax_flags & HL_CONCEAL) != 0 || has_match_conc > 0)
           && !(lnum_in_visual_area
-               && vim_strchr(wp->w_p_cocu, 'v') == NULL)) {
+               && vim_strchr(wp->w_p_cocu, 'v') == NULL)
+            ) || (fold_col >=0 && has_match_conc > 0)
+          ) {
+        ILOG("Entering into conceal mode %c", match_conc);
+        // TODO could be HL_FOLDEDL
         char_attr = win_hl_attr(wp, HLF_CONCEAL);
         if ((prev_syntax_id != syntax_seqnr || has_match_conc > 1)
             && (syn_get_sub_char() != NUL || match_conc
@@ -4725,19 +4774,19 @@ win_line (
   }
 
   // tv_list_free_contents(&fold_positions);
-  ILOG("fold_matchids to remove %d", fold_matchids[0]);
+  // ILOG("fold_matchids to remove %d", fold_matchids[0]);
   // TODO clear fold matches
-  for(int i = 1; i <= fold_matchids[0]; i++) {
-    ILOG("MATT removing %d", fold_matchids[i]);
+  // for(int i = 1; i <= fold_matchids[0]; i++) {
+  //   ILOG("MATT removing %d", fold_matchids[i]);
 
-    // ca entraine un redraw !
-    int ret = 0;
-    // ret = match_delete(wp, fold_matchids[i], true, false);
-    if (ret < 0) {
-      ELOG("Could not delete id %d", ret);
-    }
+  //   // ca entraine un redraw !
+  //   int ret = 0;
+  //   // ret = match_delete(wp, fold_matchids[i], true, false);
+  //   if (ret < 0) {
+  //     ELOG("Could not delete id %d", ret);
+  //   }
 
-  }
+  // }
   // TODO free the folds
   // GA_DEEP_CLEAR_PTR()
   // xfree(folds.)
