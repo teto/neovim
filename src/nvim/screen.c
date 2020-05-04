@@ -4112,7 +4112,7 @@ win_line (
           //
           // getNextInlineFold(vcol);
         } else if(fp->fd_flags ==  FD_CLOSED
-                  && (vcol >= mark.col + 1)
+                  && (vcol > mark.col)
                   && fold_col == 0
                   ){
           // first time we reach the closed fold
@@ -4128,7 +4128,9 @@ win_line (
           && ((syntax_flags & HL_CONCEAL) != 0 || has_match_conc > 0)
           && !(lnum_in_visual_area
                && vim_strchr(wp->w_p_cocu, 'v') == NULL)
-            ) || (fold_col >=0 && has_match_conc > 0)
+            )
+          // if inline fold
+          || (fold_col >= 0 && has_match_conc > 0)
           ) {
         ILOG("Entering into conceal mode %c", match_conc);
         // TODO could be HL_FOLDEDL
