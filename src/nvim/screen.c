@@ -4081,23 +4081,8 @@ win_line (
 
 
 
-      if (fold_col > 0) {
-        // we are already in a fold, trigger conceal during length of fold
-        // (=initial value offold_col)
-        fold_col--;
-        // 2 when 2 : 1;
-        has_match_conc = 1;
-        ILOG("fold_col decreased to %d", fold_col);
-
-        if (fold_col <= 0) {
-          ILOG("fold_col reached ");
-          has_match_conc = 2;  // to display the character
-          match_conc = 'X';     // TODO use a strange unicode char
-          // check for another fold
-        }
-      }
       // check length too
-      else if (current_fold != NULL ) {
+      if (current_fold != NULL ) {
         // Cheat and enable conceal mode if we are entering a fold
         fold_T *fp = current_fold;
         ExtmarkInfo mark = extmark_from_id(wp->w_buffer, fold_init(), fp->fd_mark_id);
@@ -4112,12 +4097,28 @@ win_line (
           //
           // getNextInlineFold(vcol);
         } else if(fp->fd_flags ==  FD_CLOSED
-                  && (vcol > mark.col)
+                  && (vcol >= mark.col)
                   && fold_col == 0
                   ){
           // first time we reach the closed fold
           fold_col = mark.end_col - mark.col;
           ILOG("Hitting first fold column, setting fold_col to %d", fold_col);
+        }
+      }
+
+      if (fold_col > 0) {
+        // we are already in a fold, trigger conceal during length of fold
+        // (=initial value offold_col)
+        fold_col--;
+        // 2 when 2 : 1;
+        has_match_conc = 1;
+        ILOG("fold_col decreased to %d", fold_col);
+
+        if (fold_col <= 0) {
+          ILOG("fold_col reached ");
+          has_match_conc = 2;  // to display the character
+          match_conc = 'X';     // TODO use a strange unicode char
+          // check for another fold
         }
       }
 
