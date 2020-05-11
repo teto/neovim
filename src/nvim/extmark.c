@@ -732,6 +732,26 @@ uint64_t src2ns(Integer *src_id)
   }
 }
 
+// In the future we may want to create a new region that writes the overlap
+// pass a posT move to overlap ?
+// TODO rename to find _region ?
+bool extmark_point_inside(linenr_T absline, colnr_T abscol, ExtmarkInfo m)
+{
+  // 0 indexed to compare with extmark
+  int line = absline - 1;
+  int col = abscol;
+  // ml_find_line_or_offset()
+  if (line >= m.row && line <= m.end_row ) {
+    if (m.row == line && m.col > col) return false;
+    if (m.end_row == line && m.col < col) return false;
+
+    return true;
+  }
+
+  return false;
+}
+
+
 /// Add highlighting to a buffer, bounded by two cursor positions,
 /// with an offset.
 ///

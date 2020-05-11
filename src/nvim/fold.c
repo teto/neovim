@@ -44,6 +44,9 @@
 /* typedef fold_T {{{2 */
 
 #define MAX_LEVEL       20      /* maximum fold depth */
+#define DEBUG_MARK(m)  \
+      ILOG("FP mark row/col %d/%d to %d/%d (inline fold %d)", \
+           m.row, m.col, m.end_row, m.end_col, m.row == m.end_row);
 
 /* Define "fline_T", passed to get fold level for a line. {{{2 */
 typedef struct {
@@ -138,12 +141,11 @@ uint64_t fold_init(void) {
 
 /// get next closed inline fold
 /// or after col
-// int 
 fold_T *getNextInlineFold(
     const win_T *wp,
     const garray_T *folds
+    // , fold_T *current
     , int col
-    // , fold_T *fp
 )
 {
 // , const fold_T *current_fold) {
@@ -152,13 +154,13 @@ fold_T *getNextInlineFold(
     fold_T *fp = ((fold_T **)folds->ga_data)[i];
     // assert it's extmarks
     // assert(it->fd_flags );
-    if( fp->fd_flags != FD_CLOSED) {
+    if(fp->fd_flags != FD_CLOSED) {
       continue;
     }
     ExtmarkInfo mark = extmark_from_id(wp->w_buffer, fold_init(), fp->fd_mark_id);
     bool inline_fold = mark.row == mark.end_row;
     assert(inline_fold == true);
-    if ( col < mark.col) {
+    if (col <= mark.col ) {
       return fp;
     }
 
@@ -422,22 +424,20 @@ int foldmethodIsDiff(win_T *wp)
 }
 
 /* closeFold() {{{2 */
-/*
- * Close fold for current window at line "lnum".
- * Repeat "count" times.
- */
-void closeFold(linenr_T lnum, long count)
+/// Close fold for current window at line "lnum".
+/// Repeat "count" times.
+void closeFold(pos_T pos, long count)
 {
-  setFoldRepeat(lnum, count, FALSE);
+  setFoldRepeat(pos, count, FALSE);
 }
 
 /* closeFoldRecurse() {{{2 */
 /*
  * Close fold for current window at line "lnum" recursively.
  */
-void closeFoldRecurse(linenr_T lnum)
+void closeFoldRecurse(pos_T pos)
 {
-  (void)setManualFold(lnum, FALSE, TRUE, NULL);
+  (void)setManualFold(pos, FALSE, TRUE, NULL);
 }
 
 /* opFoldRange() {{{2 */
@@ -447,24 +447,27 @@ void closeFoldRecurse(linenr_T lnum)
  */
 void
 opFoldRange(
-    linenr_T first,
-    linenr_T last,
+    pos_T firstpos,
+    pos_T lastpos,
     int opening,                    // TRUE to open, FALSE to close
     int recurse,                    // TRUE to do it recursively
     int had_visual                  // TRUE when Visual selection used
 )
 {
   int done = DONE_NOTHING;              /* avoid error messages */
+  linenr_T first = firstpos.lnum;
+  linenr_T last = lastpos.lnum;
   linenr_T lnum;
   linenr_T lnum_next;
 
   for (lnum = first; lnum <= last; lnum = lnum_next + 1) {
+    pos_T temp = { lnum, 0, 0 };
     lnum_next = lnum;
     /* Opening one level only: next fold to open is after the one going to
      * be opened. */
     if (opening && !recurse)
       (void)hasFolding(lnum, NULL, &lnum_next);
-    (void)setManualFold(lnum, opening, recurse, &done);
+    (void)setManualFold(temp, opening, recurse, &done);
     /* Closing one level only: next line to close a fold is after just
      * closed fold. */
     if (!opening && !recurse)
@@ -482,18 +485,18 @@ opFoldRange(
  * Open fold for current window at line "lnum".
  * Repeat "count" times.
  */
-void openFold(linenr_T lnum, long count)
+void openFold(pos_T pos, long count)
 {
-  setFoldRepeat(lnum, count, TRUE);
+  setFoldRepeat(pos, count, TRUE);
 }
 
 /* openFoldRecurse() {{{2 */
 /*
  * Open fold for current window at line "lnum" recursively.
  */
-void openFoldRecurse(linenr_T lnum)
+void openFoldRecurse(pos_T pos)
 {
-  (void)setManualFold(lnum, TRUE, TRUE, NULL);
+  (void)setManualFold(pos, TRUE, TRUE, NULL);
 }
 
 /* foldOpenCursor() {{{2 */
@@ -508,7 +511,7 @@ void foldOpenCursor(void)
   if (hasAnyFolding(curwin))
     for (;; ) {
       done = DONE_NOTHING;
-      (void)setManualFold(curwin->w_cursor.lnum, TRUE, FALSE, &done);
+      (void)setManualFold(curwin->w_cursor, TRUE, FALSE, &done);
       if (!(done & DONE_ACTION))
         break;
     }
@@ -604,9 +607,28 @@ int foldManualAllowed(int create)
   return FALSE;
 }
 
+// bool extmark_point_inside(linenr_T absline, colnr_T abscol, ExtmarkInfo m)
+// {
+
+//   int line = line - 1;
+//   int col = abscol - 1;
+//   if (line >= m.row && line <= m.end_row ) {
+//     if (m.row == line && m.col <= col) return true;
+//     if (m.end_row == line && m.col >= col) return true;
+//   }
+//   return m
+// }
+
+// bool foldFullyContains (fold_T *fp)
+// {
+//   return fp->fd_top + fp->fd_len > end_rel;
+// }
+
+
 // foldCreate() {{{2
 /// Create a fold from line "start" to line "end" (inclusive) in the current
 /// window.
+/// refuse to create folds that overlap ?
 void foldCreate(win_T *wp, linenr_T start, linenr_T end,
                 colnr_T startcol, colnr_T endcol)
 {
@@ -631,7 +653,7 @@ void foldCreate(win_T *wp, linenr_T start, linenr_T end,
 
   // When 'foldmethod' is "marker" add markers, which creates the folds.
   if (foldmethodIsMarker(wp)) {
-    foldCreateMarkers(wp, start, end);
+    foldCreateMarkers(wp, start_rel, end_rel);
     return;
   }
 
@@ -640,10 +662,35 @@ void foldCreate(win_T *wp, linenr_T start, linenr_T end,
   // Find the place to insert the new fold
   gap = &wp->w_folds;
   for (;; ) {
-    if (!foldFind(gap, start_rel, &fp))
+    if (!foldFind(gap, start_rel, &fp)) {
+      ILOG("could not find any fold");
       break;
-    if (fp->fd_top + fp->fd_len > end_rel) {
-      /* New fold is completely inside this fold: Go one level deeper. */
+    }
+
+    ExtmarkInfo mark = extmark_from_id(wp->w_buffer, fold_ns, fp->fd_mark_id);
+    bool inline_fold = mark.row == mark.end_row;
+
+    // TODO
+    // creating a fold on same line check if cols overlap
+    // check for column if they
+    // startcol/endcol
+    DEBUG_MARK(mark);
+    // ILOG("to compare with %ld:%d ", );
+    bool start_contained = extmark_point_inside(start, startcol, mark);
+    bool end_contained = extmark_point_inside(end, endcol, mark);
+    bool fully_contained = (start_contained && end_contained)
+          || (!inline_fold && (fp->fd_top + fp->fd_len > end_rel));
+
+    if( inline_fold && !fully_contained) {
+      ILOG("inline fold not fully_contained start %d vs end %d", start_contained, end_contained);
+      EMSG("not fully contained");
+      // return;
+    }
+
+    if (fully_contained) {
+      ILOG("the fold is fully contained");
+
+      // New fold is completely inside this fold: Go one level deeper.
       gap = &fp->fd_nested;
       start_rel -= fp->fd_top;
       end_rel -= fp->fd_top;
@@ -659,6 +706,7 @@ void foldCreate(win_T *wp, linenr_T start, linenr_T end,
     } else {
       /* This fold and new fold overlap: Insert here and move some folds
        * inside the new fold. */
+      ILOG("the 2 folds overlap");
       break;
     }
   }
@@ -670,9 +718,12 @@ void foldCreate(win_T *wp, linenr_T start, linenr_T end,
     ga_init(&fold_ga, (int)sizeof(fold_T), 10);
 
     /* Count number of folds that will be contained in the new fold. */
-    for (cont = 0; i + cont < gap->ga_len; ++cont)
-      if (fp[cont].fd_top > end_rel)
+    for (cont = 0; i + cont < gap->ga_len; ++cont) {
+      if (fp[cont].fd_top > end_rel) {
         break;
+      }
+    }
+    ILOG("number of folds contained in new fold %d", cont);
     if (cont > 0) {
       ga_grow(&fold_ga, cont);
       /* If the first fold starts before the new fold, let the new fold
@@ -700,10 +751,7 @@ void foldCreate(win_T *wp, linenr_T start, linenr_T end,
               sizeof(fold_T) * (size_t)(gap->ga_len - i));
     gap->ga_len = gap->ga_len + 1 - cont;
 
-    /* insert new fold */
-    fp->fd_nested = fold_ga;
-    fp->fd_top = start_rel;
-    fp->fd_len = end_rel - start_rel + 1;
+    // insert new fold
     // Decoration *decor = xcalloc(1, sizeof(*decor));
     ILOG("Creating fold for columns start/end %d/%d", startcol, endcol);
     fp->fd_mark_id = extmark_set(wp->w_buffer, fold_ns, 0,
@@ -711,12 +759,16 @@ void foldCreate(win_T *wp, linenr_T start, linenr_T end,
                                  // use -1 to disable paired mark (end)
                                  (int)end-1, endcol,
                                  NULL, kExtmarkUndo);
+    fp->fd_nested = fold_ga;
+    fp->fd_top = start_rel;
+    fp->fd_len = (end_rel == start_rel) ? 0 : end_rel - start_rel + 1;
 
     /* We want the new fold to be closed.  If it would remain open because
      * of using 'foldlevel', need to adjust fd_flags of containing folds.
      */
     if (use_level && !closed && level < wp->w_p_fdl) {
-      closeFold(start, 1L);
+      pos_T startpos = {start, 1, 0 };
+      closeFold(startpos, 1L);
     }
     if (!use_level) {
       wp->w_fold_manual = true;
@@ -1130,7 +1182,7 @@ void cloneFoldGrowArray(garray_T *from, garray_T *to)
 ///
 /// @param[out] fpp fold struct for the fold that contains "lnum" or
 /// the first fold below it (careful: it can be beyond the end of the array!).
-/// @return false when there is no fold that contains "lnum".
+/// @return always false
 int foldFindAccum(const garray_T *gap, linenr_T lnum, garray_T *accum)
 {
   linenr_T low, high;
@@ -1144,31 +1196,42 @@ int foldFindAccum(const garray_T *gap, linenr_T lnum, garray_T *accum)
   fp = (fold_T *)gap->ga_data;
   low = 0;
   high = gap->ga_len - 1;
-  while (low <= high) {
-    linenr_T i = (low + high) / 2;
-    if (fp[i].fd_top > lnum)
-      /* fold below lnum, adjust high */
-      high = i - 1;
-    else if (fp[i].fd_top + fp[i].fd_len <= lnum)
-      /* fold above lnum, adjust low */
-      low = i + 1;
-    else {
-      /* lnum is inside this fold */
+
+  // TODO hack to get fast results
+  for (int i = 0; i < gap->ga_len; i++) {
       fold_T *fpp = fp + i;
+      ILOG("fold %d with top %d", i, fpp->fd_top);
+
       if (fpp->fd_top == lnum) {
         ILOG("Appended fd for lnum %ld", fpp->fd_top);
         GA_APPEND(fold_T *, accum, fpp);
+        foldFindAccum(&fp->fd_nested, 1, accum);
       }
-
-      // or 1
-      foldFindAccum(&fp->fd_nested, 1, accum);
-
-      return TRUE;
-    }
   }
+  // while (low <= high) {
+  //   linenr_T i = (low + high) / 2;
+  //   if (fp[i].fd_top > lnum)
+  //     /* fold below lnum, adjust high */
+  //     high = i - 1;
+  //   else if (fp[i].fd_top + fp[i].fd_len <= lnum)
+  //     /* fold above lnum, adjust low */
+  //     low = i + 1;
+  //   else {
+  //     /* lnum is inside this fold */
+  //     fold_T *fpp = fp + i;
+  //     if (fpp->fd_top == lnum) {
+  //       ILOG("Appended fd for lnum %ld", fpp->fd_top);
+  //       GA_APPEND(fold_T *, accum, fpp);
+  //     }
+
+  //     // or 1
+  //     foldFindAccum(&fp->fd_nested, 1, accum);
+
+  //     return TRUE;
+  //   }
+  // }
   // *fpp = fp + low;
 
-  // foldFindAccum(&fp->fd_nested, lnum, accum);
   return FALSE;
 }
 
@@ -1250,14 +1313,14 @@ static void checkupdate(win_T *wp)
  * Open or close fold for current window at line "lnum".
  * Repeat "count" times.
  */
-static void setFoldRepeat(linenr_T lnum, long count, int do_open)
+static void setFoldRepeat(pos_T pos, long count, int do_open)
 {
   int done;
   long n;
 
   for (n = 0; n < count; ++n) {
     done = DONE_NOTHING;
-    (void)setManualFold(lnum, do_open, FALSE, &done);
+    (void)setManualFold(pos, do_open, FALSE, &done);
     if (!(done & DONE_ACTION)) {
       /* Only give an error message when no fold could be opened. */
       if (n == 0 && !(done & DONE_FOLD))
@@ -1274,12 +1337,13 @@ static void setFoldRepeat(linenr_T lnum, long count, int do_open)
  */
 static linenr_T
 setManualFold(
-    linenr_T lnum,
+    pos_T pos,
     int opening,                // TRUE when opening, FALSE when closing
     int recurse,                // TRUE when closing/opening recursive
     int *donep
 )
 {
+  linenr_T lnum = pos.lnum;
   if (foldmethodIsDiff(curwin) && curwin->w_p_scb) {
     linenr_T dlnum;
 

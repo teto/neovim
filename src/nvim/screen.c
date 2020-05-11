@@ -2660,37 +2660,6 @@ win_line (
       //   // we want to match the thing only if fold is closed
       //   // if (inline_fold && fp->fd_flags == FD_CLOSED) {
 
-      //   //   // we could alloc/dealloc
-      //   //   listitem_T *item = &fold_listitems[i];
-      //   //   // item->li_tv.v_type = VAR_LIST;
-      //   //   int len = mark.end_col - mark.col;
-
-      //   //   list_T * local_pos = tv_list_alloc_ret(TV_LIST_ITEM_TV(item), 3);
-      //   //   // register line/col/byte length
-      //   //   tv_list_append_number(local_pos, mark.row + 1);
-      //   //   tv_list_append_number(local_pos, mark.col + 1);
-      //   //   tv_list_append_number(local_pos, len);
-
-      //   //   tv_list_append(&fold_positions, item);
-
-      //   //     // tv_list_append  tv_list_alloc(0)
-      //   //   // FoldedLight
-      //   //   // FoldInlineUnfolded
-      //   //   int ret = match_add(wp, (const char *)"FoldedLight", NULL, 2, -1,
-      //   //     &fold_positions, "X" // conceal char
-      //   //   );
-      //   //   tv_list_free(local_pos);
-
-      //   //   if (ret < 0) {
-      //   //     ELOG("Failed to register ");
-      //   //   } else {
-      //   //     // the redraw call seems useless
-      //   //     // redraw_win_later(wp, NOT_VALID);
-      //   //     ILOG("ADDED one match with id=%d len=%d", ret, len);
-      //   //     // record id
-      //   //     fold_matchids[0]++;
-      //   //     fold_matchids[fold_matchids[0]] = ret;
-      //   //   }
       //   // }
       // }
     }
@@ -4103,7 +4072,7 @@ win_line (
       }
 
       // check length too
-      if (current_fold != NULL ) {
+      if (current_fold != NULL && fold_col == 0) {
         // Cheat and enable conceal mode if we are entering a fold
         fold_T *fp = current_fold;
         ExtmarkInfo mark = extmark_from_id(wp->w_buffer, fold_init(), fp->fd_mark_id);
@@ -4115,11 +4084,16 @@ win_line (
         if (vcol >= mark.end_col) {
           // TODO Try to search for the next fold on the line
           fold_col = 0;
+
           //
-          // getNextInlineFold(vcol);
+          // current_fold = getNextInlineFold(wp, &folds, vcol);
+          // ILOG("could we find a following fold ? %d", current_fold != NULL);
+          // if (current_fold) {
+          //   ExtmarkInfo tmark = extmark_from_id(wp->w_buffer, fold_init(), current_fold->fd_mark_id);
+          //   DEBUG_MARK(tmark);
+          // }
         } else if(fp->fd_flags ==  FD_CLOSED
                   && (vcol >= mark.col)
-                  && fold_col == 0
                   ){
           // first time we reach the closed fold
           fold_col = mark.end_col - mark.col;
@@ -4141,7 +4115,14 @@ win_line (
         if (fold_col <= 0) {
           has_match_conc = 5;  // 5 is special value for folds to display the character
           match_conc = 'X';     // TODO use a strange unicode char
-          ILOG("fold_col reached: previous n_extra %d", n_extra);
+          // ILOG("fold_col reached: previous n_extra %d", n_extra);
+
+          current_fold = getNextInlineFold(wp, &folds, vcol);
+          ILOG("could we find a following fold ? %d", current_fold != NULL);
+          if (current_fold) {
+            ExtmarkInfo tmark = extmark_from_id(wp->w_buffer, fold_init(), current_fold->fd_mark_id);
+            DEBUG_MARK(tmark);
+          }
 
           // check for another fold
         }
@@ -4807,20 +4788,6 @@ win_line (
     cap_col = 0;
   }
 
-  // tv_list_free_contents(&fold_positions);
-  // ILOG("fold_matchids to remove %d", fold_matchids[0]);
-  // TODO clear fold matches
-  // for(int i = 1; i <= fold_matchids[0]; i++) {
-  //   ILOG("MATT removing %d", fold_matchids[i]);
-
-  //   // ca entraine un redraw !
-  //   int ret = 0;
-  //   // ret = match_delete(wp, fold_matchids[i], true, false);
-  //   if (ret < 0) {
-  //     ELOG("Could not delete id %d", ret);
-  //   }
-
-  // }
   // TODO free the folds
   // GA_DEEP_CLEAR_PTR()
   // xfree(folds.)

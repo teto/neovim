@@ -1971,6 +1971,10 @@ void do_pending_operator(cmdarg_T *cap, int old_col, bool gui_yank)
     case OP_FOLD:
       VIsual_reselect = false;          // don't reselect now
       // TODO(teto): pass visual debut
+      ILOG("Creating fold via zf with coords %ld:%d - %ld:%d",
+           oap->start.lnum, oap->start.col, oap->end.lnum, oap->end.col
+          );
+
       foldCreate(curwin, oap->start.lnum, oap->end.lnum,
                  // oap->start_vcol, oap->end_vcol
                  oap->start.col, oap->end.col
@@ -1982,12 +1986,14 @@ void do_pending_operator(cmdarg_T *cap, int old_col, bool gui_yank)
     case OP_FOLDCLOSE:
     case OP_FOLDCLOSEREC:
       VIsual_reselect = false;          /* don't reselect now */
-      opFoldRange(oap->start.lnum, oap->end.lnum,
+      {
+      opFoldRange(oap->start, oap->end,
           oap->op_type == OP_FOLDOPEN
           || oap->op_type == OP_FOLDOPENREC,
           oap->op_type == OP_FOLDOPENREC
           || oap->op_type == OP_FOLDCLOSEREC,
           oap->is_VIsual);
+      }
       break;
 
     case OP_FOLDDEL:
@@ -2589,9 +2595,9 @@ do_mouse (
       && which_button == MOUSE_LEFT) {
     /* open or close a fold at this line */
     if (jump_flags & MOUSE_FOLD_OPEN)
-      openFold(curwin->w_cursor.lnum, 1L);
+      openFold(curwin->w_cursor, 1L);
     else
-      closeFold(curwin->w_cursor.lnum, 1L);
+      closeFold(curwin->w_cursor, 1L);
     /* don't move the cursor if still in the same window */
     if (curwin == old_curwin)
       curwin->w_cursor = save_cursor;
@@ -4392,18 +4398,18 @@ dozet:
 
   /* "za": open closed fold or close open fold at cursor */
   case 'a':   if (hasFolding(curwin->w_cursor.lnum, NULL, NULL))
-      openFold(curwin->w_cursor.lnum, cap->count1);
+      openFold(curwin->w_cursor, cap->count1);
     else {
-      closeFold(curwin->w_cursor.lnum, cap->count1);
+      closeFold(curwin->w_cursor, cap->count1);
       curwin->w_p_fen = true;
     }
     break;
 
   /* "zA": open fold at cursor recursively */
   case 'A':   if (hasFolding(curwin->w_cursor.lnum, NULL, NULL))
-      openFoldRecurse(curwin->w_cursor.lnum);
+      openFoldRecurse(curwin->w_cursor);
     else {
-      closeFoldRecurse(curwin->w_cursor.lnum);
+      closeFoldRecurse(curwin->w_cursor);
       curwin->w_p_fen = true;
     }
     break;
@@ -4412,21 +4418,22 @@ dozet:
   case 'o':   if (VIsual_active)
       nv_operator(cap);
     else
-      openFold(curwin->w_cursor.lnum, cap->count1);
+      openFold(curwin->w_cursor, cap->count1);
     break;
 
   /* "zO": open fold recursively */
   case 'O':   if (VIsual_active)
       nv_operator(cap);
     else
-      openFoldRecurse(curwin->w_cursor.lnum);
+      openFoldRecurse(curwin->w_cursor);
     break;
 
   /* "zc": close fold at cursor or Visual area */
   case 'c':   if (VIsual_active)
       nv_operator(cap);
-    else
-      closeFold(curwin->w_cursor.lnum, cap->count1);
+    else {
+      closeFold(curwin->w_cursor, cap->count1);
+    }
     curwin->w_p_fen = true;
     break;
 
@@ -4434,7 +4441,7 @@ dozet:
   case 'C':   if (VIsual_active)
       nv_operator(cap);
     else
-      closeFoldRecurse(curwin->w_cursor.lnum);
+      closeFoldRecurse(curwin->w_cursor);
     curwin->w_p_fen = true;
     break;
 
