@@ -9311,7 +9311,7 @@ static void ex_fold(exarg_T *eap)
   if (foldManualAllowed(true)) {
     pos_T *pos1 = getmark_buf_fnum(curbuf, '<' , false, NULL);
     pos_T *pos2 = getmark_buf_fnum(curbuf, '>' , false, NULL);
-    foldCreate(curwin, pos1->lnum, pos2->lnum, pos1->col, pos2->col);
+    foldCreate(curwin, *pos1, *pos2);
   }
 }
 

@@ -619,7 +619,8 @@ int foldManualAllowed(int create)
 //   return m
 // }
 
-// bool foldFullyContains (fold_T *fp)
+// bool foldFullyContains (fold_T *fp, )
+// bool isFoldContained (fold_T *fp, pos_T start, pos_T end)
 // {
 //   return fp->fd_top + fp->fd_len > end_rel;
 // }
@@ -629,27 +630,33 @@ int foldManualAllowed(int create)
 /// Create a fold from line "start" to line "end" (inclusive) in the current
 /// window.
 /// refuse to create folds that overlap ?
-void foldCreate(win_T *wp, linenr_T start, linenr_T end,
-                colnr_T startcol, colnr_T endcol)
+void foldCreate(win_T *wp, pos_T start, pos_T end)
+                // colnr_T startcol, colnr_T endcol)
 {
   fold_T      *fp;
   garray_T    *gap;
   garray_T fold_ga;
   int i, j;
-  int cont;
   int use_level = FALSE;
   int closed = FALSE;
   int level = 0;
-  linenr_T start_rel = start;
-  linenr_T end_rel = end;
+  pos_T start_rel = start;
+  pos_T end_rel = end;
 
-  if (start > end) {
+  if (start.lnum > end.lnum) {
     /* reverse the range */
-    end = start_rel;
-    start = end_rel;
-    start_rel = start;
-    end_rel = end;
+    pos_T temp = start;
+    start = end;
+    end = start;
+    // end.lnum = start_rel;
+    // start.lnum = end_rel;
+    // start_rel = start.lnum;
+    // end_rel = end.lnum;
   }
+
+  ILOG("Creating fold via zf with coords %ld:%d - %ld:%d",
+        start.lnum, start.col, end.lnum, end.col
+      );
 
   // When 'foldmethod' is "marker" add markers, which creates the folds.
   if (foldmethodIsMarker(wp)) {
@@ -662,7 +669,7 @@ void foldCreate(win_T *wp, linenr_T start, linenr_T end,
   // Find the place to insert the new fold
   gap = &wp->w_folds;
   for (;; ) {
-    if (!foldFind(gap, start_rel, &fp)) {
+    if (!foldFind(gap, start_rel.lnum, &fp)) {
       ILOG("could not find any fold");
       break;
     }
@@ -676,10 +683,10 @@ void foldCreate(win_T *wp, linenr_T start, linenr_T end,
     // startcol/endcol
     DEBUG_MARK(mark);
     // ILOG("to compare with %ld:%d ", );
-    bool start_contained = extmark_point_inside(start, startcol, mark);
-    bool end_contained = extmark_point_inside(end, endcol, mark);
+    bool start_contained = extmark_point_inside(start,  mark);
+    bool end_contained = extmark_point_inside(end, mark);
     bool fully_contained = (start_contained && end_contained)
-          || (!inline_fold && (fp->fd_top + fp->fd_len > end_rel));
+          || (!inline_fold && (fp->fd_top + fp->fd_len > end_rel.lnum));
 
     if( inline_fold && !fully_contained) {
       ILOG("inline fold not fully_contained start %d vs end %d", start_contained, end_contained);
@@ -692,8 +699,8 @@ void foldCreate(win_T *wp, linenr_T start, linenr_T end,
 
       // New fold is completely inside this fold: Go one level deeper.
       gap = &fp->fd_nested;
-      start_rel -= fp->fd_top;
-      end_rel -= fp->fd_top;
+      start_rel.lnum -= fp->fd_top;
+      end_rel.lnum -= fp->fd_top;
       if (use_level || fp->fd_flags == FD_LEVEL) {
         use_level = true;
         if (level >= wp->w_p_fdl) {
@@ -706,7 +713,7 @@ void foldCreate(win_T *wp, linenr_T start, linenr_T end,
     } else {
       /* This fold and new fold overlap: Insert here and move some folds
        * inside the new fold. */
-      ILOG("the 2 folds overlap");
+      // TODO with column based, they don't necessarily overlap anymore
       break;
     }
   }
@@ -714,27 +721,37 @@ void foldCreate(win_T *wp, linenr_T start, linenr_T end,
   i = (int)(fp - (fold_T *)gap->ga_data);
   ga_grow(gap, 1);
   {
+    int cont = 0;
+    int inline_folds;
     fp = (fold_T *)gap->ga_data + i;
     ga_init(&fold_ga, (int)sizeof(fold_T), 10);
 
-    /* Count number of folds that will be contained in the new fold. */
+    ILOG("starting checking folds at %d", i);
+
+    // Count number of folds that will be contained in the new fold.
     for (cont = 0; i + cont < gap->ga_len; ++cont) {
-      if (fp[cont].fd_top > end_rel) {
+      // doesn't work with inline folds
+      ExtmarkInfo mark = extmark_from_id(wp->w_buffer, fold_ns, fp[cont].fd_mark_id);
+
+      if (fp[cont].fd_top > end_rel.lnum
+          || (fp[cont].fd_top == end_rel.lnum && mark.end_col > end.col)
+          ) {
+      // if (!isFoldContained(&fp[cont], start, end)) {
         break;
       }
     }
-    ILOG("number of folds contained in new fold %d", cont);
+    ILOG("number of folds contained in new fold=%d", cont);
     if (cont > 0) {
       ga_grow(&fold_ga, cont);
       /* If the first fold starts before the new fold, let the new fold
        * start there.  Otherwise the existing fold would change. */
-      if (start_rel > fp->fd_top)
-        start_rel = fp->fd_top;
+      if (start_rel.lnum > fp->fd_top)
+        start_rel.lnum = fp->fd_top;
 
       /* When last contained fold isn't completely contained, adjust end
        * of new fold. */
-      if (end_rel < fp[cont - 1].fd_top + fp[cont - 1].fd_len - 1)
-        end_rel = fp[cont - 1].fd_top + fp[cont - 1].fd_len - 1;
+      if (end_rel.lnum < fp[cont - 1].fd_top + fp[cont - 1].fd_len - 1)
+        end_rel.lnum = fp[cont - 1].fd_top + fp[cont - 1].fd_len - 1;
       /* Move contained folds to inside new fold. */
       memmove(fold_ga.ga_data, fp, sizeof(fold_T) * (size_t)cont);
       fold_ga.ga_len += cont;
@@ -743,7 +760,7 @@ void foldCreate(win_T *wp, linenr_T start, linenr_T end,
       /* Adjust line numbers in contained folds to be relative to the
        * new fold. */
       for (j = 0; j < cont; ++j)
-        ((fold_T *)fold_ga.ga_data)[j].fd_top -= start_rel;
+        ((fold_T *)fold_ga.ga_data)[j].fd_top -= start_rel.lnum;
     }
     /* Move remaining entries to after the new fold. */
     if (i < gap->ga_len)
@@ -753,22 +770,23 @@ void foldCreate(win_T *wp, linenr_T start, linenr_T end,
 
     // insert new fold
     // Decoration *decor = xcalloc(1, sizeof(*decor));
-    ILOG("Creating fold for columns start/end %d/%d", startcol, endcol);
+    ILOG("Creating fold for columns start/end %d/%d", start.col, end.col);
+    // TODO be careful
     fp->fd_mark_id = extmark_set(wp->w_buffer, fold_ns, 0,
-                                 (int)start-1, startcol,
+                                 (int)start.lnum-1, start.col,
                                  // use -1 to disable paired mark (end)
-                                 (int)end-1, endcol,
+                                 (int)end.lnum-1, end.col,
                                  NULL, kExtmarkUndo);
     fp->fd_nested = fold_ga;
-    fp->fd_top = start_rel;
-    fp->fd_len = (end_rel == start_rel) ? 0 : end_rel - start_rel + 1;
+    fp->fd_top = start_rel.lnum;
+    fp->fd_len = end_rel.lnum - start_rel.lnum + 1;
 
     /* We want the new fold to be closed.  If it would remain open because
      * of using 'foldlevel', need to adjust fd_flags of containing folds.
      */
     if (use_level && !closed && level < wp->w_p_fdl) {
-      pos_T startpos = {start, 1, 0 };
-      closeFold(startpos, 1L);
+      // pos_T startpos = {start, 1, 0 };
+      closeFold(start, 1L);
     }
     if (!use_level) {
       wp->w_fold_manual = true;
@@ -1781,7 +1799,7 @@ static void setSmallMaybe(garray_T *gap)
  * Create a fold from line "start" to line "end" (inclusive) in the current
  * window by adding markers.
  */
-static void foldCreateMarkers(win_T *wp, linenr_T start, linenr_T end)
+static void foldCreateMarkers(win_T *wp, pos_T start, pos_T end)
 {
   buf_T *buf = wp->w_buffer;
   if (!MODIFIABLE(buf)) {
@@ -1796,13 +1814,13 @@ static void foldCreateMarkers(win_T *wp, linenr_T start, linenr_T end)
   /* Update both changes here, to avoid all folds after the start are
    * changed when the start marker is inserted and the end isn't. */
   // TODO(teto): pass the buffer / save curwin and temporarily override it
-  changed_lines(start, (colnr_T)0, end, 0L, false);
+  changed_lines(start.lnum, (colnr_T)0, end.lnum, 0L, false);
 
   // Note: foldAddMarker() may not actually change start and/or end if
   // u_save() is unable to save the buffer line, but we send the
   // nvim_buf_lines_event anyway since it won't do any harm.
-  int64_t num_changed = 1 + end - start;
-  buf_updates_send_changes(buf, start, num_changed, num_changed, true);
+  int64_t num_changed = 1 + end.lnum - start.lnum;
+  buf_updates_send_changes(buf, start.lnum, num_changed, num_changed, true);
 }
 
 /* foldAddMarker() {{{2 */
@@ -1810,13 +1828,14 @@ static void foldCreateMarkers(win_T *wp, linenr_T start, linenr_T end)
  * Add "marker[markerlen]" in 'commentstring' to line "lnum".
  */
 static void foldAddMarker(
-    buf_T *buf, linenr_T lnum, const char_u *marker, size_t markerlen)
+    buf_T *buf, pos_T pos, const char_u *marker, size_t markerlen)
 {
   char_u      *cms = buf->b_p_cms;
   char_u      *line;
   char_u      *newline;
   char_u      *p = (char_u *)strstr((char *)buf->b_p_cms, "%s");
   bool line_is_comment = false;
+  linenr_T lnum = pos.lnum;
 
   // Allocate a new line: old-line + 'cms'-start + marker + 'cms'-end
   line = ml_get_buf(buf, lnum, false);

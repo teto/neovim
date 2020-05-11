@@ -735,11 +735,11 @@ uint64_t src2ns(Integer *src_id)
 // In the future we may want to create a new region that writes the overlap
 // pass a posT move to overlap ?
 // TODO rename to find _region ?
-bool extmark_point_inside(linenr_T absline, colnr_T abscol, ExtmarkInfo m)
+bool extmark_point_inside(pos_T pos, ExtmarkInfo m)
 {
   // 0 indexed to compare with extmark
-  int line = absline - 1;
-  int col = abscol;
+  int line = (int)pos.lnum - 1;
+  int col = pos.col;
   // ml_find_line_or_offset()
   if (line >= m.row && line <= m.end_row ) {
     if (m.row == line && m.col > col) return false;

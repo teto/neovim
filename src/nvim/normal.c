@@ -1975,10 +1975,7 @@ void do_pending_operator(cmdarg_T *cap, int old_col, bool gui_yank)
            oap->start.lnum, oap->start.col, oap->end.lnum, oap->end.col
           );
 
-      foldCreate(curwin, oap->start.lnum, oap->end.lnum,
-                 // oap->start_vcol, oap->end_vcol
-                 oap->start.col, oap->end.col
-      );
+      foldCreate(curwin, oap->start, oap->end);
       break;
 
     case OP_FOLDOPEN:
