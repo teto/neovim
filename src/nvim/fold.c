@@ -45,8 +45,10 @@
 
 #define MAX_LEVEL       20      /* maximum fold depth */
 #define DEBUG_MARK(m)  \
-      ILOG("FP mark row/col %d/%d to %d/%d (inline fold %d)", \
+      ILOG("MARK mark row/col %d/%d to %d/%d (inline fold %d)", \
            m.row, m.col, m.end_row, m.end_col, m.row == m.end_row);
+#define DEBUG_POS(p)  \
+      ILOG("POS row/col %ld/%d ", p.lnum, p.col);
 
 /* Define "fline_T", passed to get fold level for a line. {{{2 */
 typedef struct {
@@ -733,10 +735,18 @@ void foldCreate(win_T *wp, pos_T start, pos_T end)
       // doesn't work with inline folds
       ExtmarkInfo mark = extmark_from_id(wp->w_buffer, fold_ns, fp[cont].fd_mark_id);
 
+      ILOG("check if contained at %d", i);
+      DEBUG_MARK(mark);
+      DEBUG_POS(end_rel);
+
       if (fp[cont].fd_top > end_rel.lnum
-          || (fp[cont].fd_top == end_rel.lnum && mark.end_col > end.col)
+          || (fp[cont].fd_top == end_rel.lnum
+              && (mark.col > end_rel.col) || (mark.end_col < start_rel.col))
           ) {
       // if (!isFoldContained(&fp[cont], start, end)) {
+          // if it is not contained then break
+          ILOG("break");
+
         break;
       }
     }
