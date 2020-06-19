@@ -60,5 +60,6 @@
 
 #cmakedefine HAVE_EXECINFO_BACKTRACE
 #cmakedefine HAVE_BUILTIN_ADD_OVERFLOW
+#cmakedefine NVIM_FALLTHROUGH
 
 #endif  // AUTO_CONFIG_H

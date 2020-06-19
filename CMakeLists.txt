@@ -279,6 +279,11 @@ else()
   endif()
 endif()
 
+if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wno-implicit-fallthrough)
+endif()
+
+
 if(MINGW)
   # Use POSIX compatible stdio in Mingw
   add_definitions(-D__USE_MINGW_ANSI_STDIO)
