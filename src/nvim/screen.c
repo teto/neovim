@@ -1512,7 +1512,6 @@ static void win_update(win_T *wp)
           //   conceal_cursor_used = conceal_cursor_line(curwin);
           // }
 
-          // row++;
           // TODO set to closed if multiline fold and
           // wp->w_lines[idx].wl_folded = fp->fd_flags == FD_CLOSED && fp->fd_len > 1;
           // TODO dont use foldcount but if it's multiline for instance
@@ -3181,7 +3180,7 @@ win_line (
 
     ILOG("drawing row %d level %d foldedLines %ld n_extra %d v_col %ld", row, foldinfo->fi_level, foldedLines, n_extra, vcol);
     if (draw_state == WL_LINE
-        // TODO only if closed
+        // TODO only if closed not needed
         && foldinfo->fi_level != 0
         && foldedLines > 0
         && vcol == 0
@@ -3193,6 +3192,10 @@ win_line (
         // line_attr = win_hl_attr(wp, HLF_FL);
         ILOG("Hit win_line's get_foldtext; row %d ", row);
         ILOG("level %d and foldedLines= %ld ", foldinfo->fi_level, foldedLines);
+        // p_extra_free =
+        xfree(p_extra_free);
+        p_extra_free = xmalloc(grid->Columns);
+
 
         // TODO
         // linenr_T lnume = lnum + fold_count - 1;
@@ -3210,10 +3213,37 @@ win_line (
         p_extra[n_extra] = NUL;
         ILOG("p_extra = %s ", p_extra);
         ILOG("p_extra lengthd = %d ", n_extra);
+        //   schar_T sc;
+        //   schar_from_char(sc, wp->w_p_fcs_chars.fold);
+        //   while (col < wp->w_grid.Columns
+        //          - (wp->w_p_rl ? txtcol : 0)
+        //          ) {
+        //     schar_copy(linebuf_char[off+col++], sc);
+        //   }
 
+        
+        // len = utf_char2bytes(wp->w_p_fcs_chars.foldclosed, &p[char_counter]);
+        // char_counter += len;
 
 
     } // if there is a closed fold on the line
+
+    if (draw_state == WL_LINE
+        // TODO only if closed
+        && foldinfo->fi_level != 0
+        && foldedLines > 0
+        // && col > 0
+        && col < grid->Columns
+        && n_extra == 0
+    ) {
+      // draw the filler
+      c_extra = wp->w_p_fcs_chars.fold;
+      n_extra = grid->Columns - col;
+      // pretend we have finished
+      // TODO check
+      row++;
+
+    }
 
     if (draw_state == WL_LINE && (area_highlighting || has_spell)) {
       // handle Visual or match highlighting in this line
