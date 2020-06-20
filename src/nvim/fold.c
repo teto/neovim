@@ -1833,6 +1833,7 @@ char_u *get_foldtext(win_T *wp, linenr_T lnum, linenr_T lnume,
                  NGETTEXT("+--%3ld line folded",
                           "+--%3ld lines folded ", count),
                  count);
+    ILOG("get_foldtext: printed %s", buf);
     text = buf;
   }
   return text;

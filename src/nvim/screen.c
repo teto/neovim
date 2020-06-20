@@ -1456,18 +1456,19 @@ static void win_update(win_T *wp)
       // TODO this should disappear and be moved lower down
       // so we could remove DID_FOLD as it's almost unused and thus get rid of
       // all the DID_*
-      if (foldedLines != 0) {
-        // fold_line(wp, fold_count, &win_foldinfo, lnum, row);
-        // ++row;
-        // keep the -- since fold_count is used later
-        --foldedLines;
-        wp->w_lines[idx].wl_folded = TRUE;
-        // -1 because I changed fold_count
-        wp->w_lines[idx].wl_lastlnum = lnum + foldedLines;
-        did_update = DID_FOLD;
-      }
+      // if (foldedLines != 0) {
+      //   // fold_line(wp, fold_count, &win_foldinfo, lnum, row);
+      //   // ++row;
+      //   // keep the -- since fold_count is used later
+      //   // --foldedLines;
+      //   wp->w_lines[idx].wl_folded = TRUE;
+      //   // -1 because I changed fold_count
+      //   wp->w_lines[idx].wl_lastlnum = lnum + foldedLines;
+      //   did_update = DID_FOLD;
+      // }
 
-      if (idx < wp->w_lines_valid
+      if (foldedLines == 0
+          && idx < wp->w_lines_valid
                  && wp->w_lines[idx].wl_valid
                  && wp->w_lines[idx].wl_lnum == lnum
                  && lnum > wp->w_topline
@@ -1478,6 +1479,7 @@ static void win_update(win_T *wp)
         /* This line is not going to fit.  Don't draw anything here,
          * will draw "@  " lines below. */
         row = wp->w_grid.Rows + 1;
+        ILOG("this line is not going to fit");
       } else {
         prepare_search_hl(wp, lnum);
         /* Let the syntax stuff know we skipped a few lines. */
@@ -1487,20 +1489,38 @@ static void win_update(win_T *wp)
 
         row = win_line(wp, lnum, srow, wp->w_grid.Rows, mod_top == 0, false,
                        &win_foldinfo, foldedLines
-                       // , (fold_found) ? fp : NULL
                        );
 
-        wp->w_lines[idx].wl_folded = FALSE;
+        wp->w_lines[idx].wl_folded = foldedLines != 0;
         wp->w_lines[idx].wl_lastlnum = lnum;
+        did_update = DID_LINE;
+
         if (foldedLines != 0) {
+          did_update = DID_FOLD;   // should keep it since subsequent checks differ
+          // linenr_T lnume = lnum + foldedLines;
+          /*
+          * Update w_cline_height and w_cline_folded if the cursor line was
+          * updated (saves a call to plines() later).
+          */
+          // if (wp == curwin
+          //     && lnum <= curwin->w_cursor.lnum
+          //     && lnume >= curwin->w_cursor.lnum) {
+          //   curwin->w_cline_row = row;
+          //   curwin->w_cline_height = 1;
+          //   curwin->w_cline_folded = true;
+          //   curwin->w_valid |= (VALID_CHEIGHT|VALID_CROW);
+          //   conceal_cursor_used = conceal_cursor_line(curwin);
+          // }
+
+          // row++;
           // TODO set to closed if multiline fold and
           // wp->w_lines[idx].wl_folded = fp->fd_flags == FD_CLOSED && fp->fd_len > 1;
-          wp->w_lines[idx].wl_folded = foldedLines != 0;
           // TODO dont use foldcount but if it's multiline for instance
+          foldedLines--;
           wp->w_lines[idx].wl_lastlnum = lnum + foldedLines;
-          ILOG("win_line folded=%d lastlnum=%ld", wp->w_lines[idx].wl_folded, wp->w_lines[idx].wl_lastlnum);
         }
-        did_update = DID_LINE;
+        ILOG("win_line folded=%d lastlnum=%ld", wp->w_lines[idx].wl_folded, wp->w_lines[idx].wl_lastlnum);
+
         syntax_last_parsed = lnum;
       }
 
@@ -1524,12 +1544,8 @@ static void win_update(win_T *wp)
         // 'relativenumber' set: The text doesn't need to be drawn, but
         // the number column nearly always does.
         foldedLines = foldedCount(wp, lnum, &win_foldinfo);
-        // if (foldedLines != 0) {
-        //   fold_line(wp, foldedLines, &win_foldinfo, lnum, row);
-        // } else {
-          // TODO pass &win_foldinfo and remove fold_line call
-          (void)win_line(wp, lnum, srow, wp->w_grid.Rows, true, true, &win_foldinfo, foldedLines);
-        // }
+        // TODO pass &win_foldinfo and remove fold_line call
+        (void)win_line(wp, lnum, srow, wp->w_grid.Rows, true, true, &win_foldinfo, foldedLines);
       }
 
       // This line does not need to be drawn, advance to the next one.
@@ -2917,7 +2933,7 @@ win_line (
           // already be in use.
           xfree(p_extra_free);
           p_extra_free = xmalloc(MAX_MCO * fdc + 1);
-          n_extra = fill_foldcolumn(p_extra_free, wp, foldinfo->fi_level != 0, lnum);
+          n_extra = fill_foldcolumn(p_extra_free, wp, foldedLines != 0, lnum);
           p_extra_free[n_extra] = NUL;
           p_extra = p_extra_free;
           c_extra = NUL;
@@ -3163,12 +3179,12 @@ win_line (
       break;
     }
 
-    ILOG("drawing row %d level %d foldedLines %d n_extra %d v_col %d", row, foldinfo->fi_level, foldedLines, n_extra, vcol);
+    ILOG("drawing row %d level %d foldedLines %ld n_extra %d v_col %ld", row, foldinfo->fi_level, foldedLines, n_extra, vcol);
     if (draw_state == WL_LINE
         // TODO only if closed
         && foldinfo->fi_level != 0
         && foldedLines > 0
-        // && vcol >= 0
+        && vcol == 0
         && n_extra == 0
     ) {
 
@@ -3181,19 +3197,20 @@ win_line (
         // TODO
         // linenr_T lnume = lnum + fold_count - 1;
         linenr_T lnume = lnum + 1;
-        memset(buf_fold, 't', FOLD_TEXT_LEN);
-        // p_extra = get_foldtext(wp, lnum, lnume, foldinfo, buf_fold);
+        memset(buf_fold, ' ', FOLD_TEXT_LEN);
+        p_extra = get_foldtext(wp, lnum, lnume, foldinfo, buf_fold);
         // p_extra[FOLD_TEXT_LEN] = NUL;
-        // n_extra = STRLEN(p_extra);
-        n_extra = 10;
+        n_extra = STRLEN(p_extra);
+        // n_extra = 10;
         // n_extra = grid->Columns - col;
         c_extra = NUL;
         c_final = NUL;
-        // memcpy(extra, p_extra, n_extra);
+        memcpy(buf_fold, p_extra, n_extra);
         p_extra = buf_fold;
         p_extra[n_extra] = NUL;
         ILOG("p_extra = %s ", p_extra);
         ILOG("p_extra lengthd = %d ", n_extra);
+
 
 
     } // if there is a closed fold on the line
