@@ -1487,15 +1487,22 @@ static void win_update(win_T *wp)
             && syntax_present(wp))
           syntax_end_parsing(syntax_last_parsed + 1);
 
-        row = win_line(wp, lnum, srow, wp->w_grid.Rows, mod_top == 0, false,
+        //  
+        ILOG("row before %d (folded: %ld)", row, foldedLines);
+        row = win_line(wp, lnum, srow,
+                       foldedLines ? srow : wp->w_grid.Rows,
+                       // wp->w_grid.Rows, 
+                       mod_top == 0, false,
                        &win_foldinfo, foldedLines
                        );
+        ILOG("row after %d", row);
 
         wp->w_lines[idx].wl_folded = foldedLines != 0;
         wp->w_lines[idx].wl_lastlnum = lnum;
         did_update = DID_LINE;
 
-        if (foldedLines != 0) {
+        // && win_foldinfo.fi_level > 0
+        if (foldedLines > 0 ) {
           did_update = DID_FOLD;   // should keep it since subsequent checks differ
           // linenr_T lnume = lnum + foldedLines;
           /*
@@ -1515,6 +1522,7 @@ static void win_update(win_T *wp)
           // TODO set to closed if multiline fold and
           // wp->w_lines[idx].wl_folded = fp->fd_flags == FD_CLOSED && fp->fd_len > 1;
           // TODO dont use foldcount but if it's multiline for instance
+          // row --;
           foldedLines--;
           wp->w_lines[idx].wl_lastlnum = lnum + foldedLines;
         }
@@ -3183,8 +3191,9 @@ win_line (
         // TODO only if closed not needed
         && foldinfo->fi_level != 0
         && foldedLines > 0
-        && vcol == 0
+        && vcol == 0  // could we do without ?
         && n_extra == 0
+        && row == startrow
     ) {
 
         char_attr = win_hl_attr(wp, HLF_FL);
@@ -3235,14 +3244,20 @@ win_line (
         // && col > 0
         && col < grid->Columns
         && n_extra == 0
+        && row == startrow
     ) {
       // draw the filler
       c_extra = wp->w_p_fcs_chars.fold;
+      c_final = NUL;
+
+      // TODO that;s the difference
+      // n_extra = grid->Columns - col - 1;
       n_extra = grid->Columns - col;
+      ILOG("filling folded line with grid->columns %d - col %d = %d", grid->Columns, col, n_extra);
+      // row++;
+
       // pretend we have finished
       // TODO check
-      row++;
-
     }
 
     if (draw_state == WL_LINE && (area_highlighting || has_spell)) {
@@ -3473,6 +3488,12 @@ win_line (
         p_extra++;
       }
       n_extra--;
+    } else if(foldedLines != 0 && foldinfo->fi_level != 0) {
+      // MATT
+      ILOG("row %d, dont display text on folded line", row );
+      saved_n_extra = 0;
+      c = NUL;
+      XFREE_CLEAR(p_extra_free);
     } else {
       int c0;
 
@@ -4040,7 +4061,7 @@ win_line (
         // not showing the '>', put pointer back to avoid getting stuck
         ptr++;
       }
-    }
+    } // end of printing from buffer content
 
     /* In the cursor line and we may be concealing characters: correct
      * the cursor column when we reach its position. */
@@ -4097,8 +4118,14 @@ win_line (
     }
 
     // At end of the text line or just after the last character.
-    if (c == NUL) {
+    if (c == NUL
+          // && foldedLines == 0
+        ) {
+
       long prevcol = (long)(ptr - line) - 1;
+      // if (foldedLines == 0) {
+      //   prevcol = 
+      // }
 
       // we're not really at that column when skipping some text
       if ((long)(wp->w_p_wrap ? wp->w_skipcol : wp->w_leftcol) > prevcol) {
@@ -4349,12 +4376,22 @@ win_line (
        */
       if (wp == curwin && lnum == curwin->w_cursor.lnum) {
         curwin->w_cline_row = startrow;
-        curwin->w_cline_height = row - startrow;
-        curwin->w_cline_folded = false;
+        // TODO may be wrong
+        curwin->w_cline_height = foldedLines > 0 ? 1 : row - startrow;
+        ILOG("row %d , setting cline_height to %d", row, curwin->w_cline_height);
+        curwin->w_cline_folded = foldedLines > 0;
         curwin->w_valid |= (VALID_CHEIGHT|VALID_CROW);
         conceal_cursor_used = conceal_cursor_line(curwin);
       }
-
+      // if (wp == curwin
+      //     && lnum <= curwin->w_cursor.lnum
+      //     && (lnum + foldedLines) >= curwin->w_cursor.lnum) {
+      //   curwin->w_cline_row = row;
+      //   curwin->w_cline_height = 1;
+      //   curwin->w_cline_folded = true;
+      //   curwin->w_valid |= (VALID_CHEIGHT|VALID_CROW);
+      //   conceal_cursor_used = conceal_cursor_line(curwin);
+      // }
       break;
     }
 
@@ -4548,6 +4585,7 @@ win_line (
             || (wp->w_p_list && wp->w_p_lcs_chars.eol != NUL
                 && p_extra != at_end_str)
             || (n_extra != 0 && (c_extra != NUL || *p_extra != NUL)))
+        && foldedLines == 0
         ) {
       bool wrap = wp->w_p_wrap       // Wrapping enabled.
         && filler_todo <= 0          // Not drawing diff filler lines.
@@ -4600,6 +4638,7 @@ win_line (
       }
 
       /* reset the drawing state for the start of a wrapped line */
+      ILOG("RESET drawing");
       draw_state = WL_START;
       saved_n_extra = n_extra;
       saved_p_extra = p_extra;
