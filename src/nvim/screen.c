@@ -1893,17 +1893,15 @@ fill_foldcolumn(
 }
 
 
-/// TODO make a better job at explaining which attr/p_extra is used with whic
-/// formalize the state to be able to better split the code
-///
 /// Display line "lnum" of window 'wp' on the screen.
-/// wp->w_virtcol needs to be valid.
 /// Start at row "startrow", stop when "endrow" is reached.
+/// wp->w_virtcol needs to be valid.
 ///
 /// @param lnum line to display
 /// @param nochange not updating for changed text
 /// @param number_only only update the number column
 /// @param fp only update the number column
+/// @param folded_lines Number returned by \ref foldedCount
 ///
 /// @return the number of last row the line occupies.
 static int
@@ -1927,7 +1925,7 @@ win_line (
   int row;                            // row in the window, excl w_winrow
   ScreenGrid *grid = &wp->w_grid;     // grid specfic to the window
 
-  char_u extra[80];                   // sign, line number and 'fdc' must
+  char_u extra[57];                   // sign, line number and 'fdc' must
                                       // fit in here
   int n_extra = 0;                    // number of extra chars
   char_u      *p_extra = NULL;        // string of extra chars, plus NUL
@@ -2020,8 +2018,7 @@ win_line (
   bool has_decorations = false;         // this buffer has decorations
   bool do_virttext = false;             // draw virtual text for this line
 
-  // TODO reuse 'extra' instead
-  char_u buf_fold[FOLD_TEXT_LEN];
+  char_u buf_fold[FOLD_TEXT_LEN];       // Hold value returned by get_foldtext
   /* draw_state: items that are drawn in sequence: */
 #define WL_START        0               /* nothing done yet */
 # define WL_CMDLINE     WL_START + 1    /* cmdline window column */
@@ -2576,7 +2573,7 @@ win_line (
           // already be in use.
           xfree(p_extra_free);
           p_extra_free = xmalloc(MAX_MCO * fdc + 1);
-          n_extra = fill_foldcolumn(p_extra_free, wp, folded_lines != 0, lnum);
+          n_extra = fill_foldcolumn(p_extra_free, wp, folded_lines > 0, lnum);
           p_extra_free[n_extra] = NUL;
           p_extra = p_extra_free;
           c_extra = NUL;
@@ -2822,41 +2819,29 @@ win_line (
       break;
     }
 
-    ILOG("drawing row %d level %d folded_lines %ld n_extra %d v_col %ld", row, foldinfo->fi_level, folded_lines, n_extra, vcol);
+    // ILOG("drawing row %d level %d folded_lines %ld n_extra %d v_col %ld", row, foldinfo->fi_level, folded_lines, n_extra, vcol);
     if (draw_state == WL_LINE
-        // TODO only if closed not needed
         && foldinfo->fi_level != 0
         && folded_lines > 0
-        && vcol == 0  // could we do without ?
+        && vcol == 0
         && n_extra == 0
         && row == startrow
     ) {
-
         char_attr = win_hl_attr(wp, HLF_FL);
-        // saved_attr2 = win_hl_attr(wp, HLF_FL);
-        // line_attr = win_hl_attr(wp, HLF_FL);
         ILOG("Hit win_line's get_foldtext; row %d ", row);
         ILOG("level %d and folded_lines= %ld ", foldinfo->fi_level, folded_lines);
-        // p_extra_free =
-        xfree(p_extra_free);
-        p_extra_free = xmalloc(grid->Columns);
 
-        // TODO
-        // linenr_T lnume = lnum + fold_count - 1;
         linenr_T lnume = lnum + folded_lines - 1;
         memset(buf_fold, ' ', FOLD_TEXT_LEN);
         p_extra = get_foldtext(wp, lnum, lnume, foldinfo, buf_fold);
-        // p_extra[FOLD_TEXT_LEN] = NUL;
         n_extra = STRLEN(p_extra);
-        // n_extra = 10;
-        // n_extra = grid->Columns - col;
         c_extra = NUL;
         c_final = NUL;
         memcpy(buf_fold, p_extra, n_extra);
         p_extra = buf_fold;
         p_extra[n_extra] = NUL;
-        ILOG("p_extra = %s ", p_extra);
-        ILOG("p_extra lengthd = %d ", n_extra);
+        // ILOG("p_extra = %s ", p_extra);
+        // ILOG("p_extra lengthd = %d ", n_extra);
     } // if there is a closed fold on the line
 
     if (draw_state == WL_LINE
@@ -3102,9 +3087,7 @@ win_line (
       }
       n_extra--;
     } else if(folded_lines != 0 && foldinfo->fi_level != 0) {
-      // MATT
-      ILOG("row %d, dont display text on folded line", row );
-      saved_n_extra = 0;
+      // skip writing the buffer line itself
       c = NUL;
       XFREE_CLEAR(p_extra_free);
     } else {
@@ -3731,14 +3714,9 @@ win_line (
     }
 
     // At end of the text line or just after the last character.
-    if (c == NUL
-          // && folded_lines == 0
-        ) {
+    if (c == NUL) {
 
       long prevcol = (long)(ptr - line) - 1;
-      // if (folded_lines == 0) {
-      //   prevcol = 
-      // }
 
       // we're not really at that column when skipping some text
       if ((long)(wp->w_p_wrap ? wp->w_skipcol : wp->w_leftcol) > prevcol) {
@@ -4185,12 +4163,12 @@ win_line (
      * so far.  If there is no more to display it is caught above.
      */
     if ((wp->w_p_rl ? (col < 0) : (col >= grid->Columns))
+        && folded_lines == 0
         && (*ptr != NUL
             || filler_todo > 0
             || (wp->w_p_list && wp->w_p_lcs_chars.eol != NUL
                 && p_extra != at_end_str)
             || (n_extra != 0 && (c_extra != NUL || *p_extra != NUL)))
-        && folded_lines == 0
         ) {
       bool wrap = wp->w_p_wrap       // Wrapping enabled.
         && filler_todo <= 0          // Not drawing diff filler lines.
