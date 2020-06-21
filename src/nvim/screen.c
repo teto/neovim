@@ -2835,10 +2835,21 @@ win_line (
         memset(buf_fold, ' ', FOLD_TEXT_LEN);
         p_extra = get_foldtext(wp, lnum, lnume, foldinfo, buf_fold);
         n_extra = STRLEN(p_extra);
+
+        if (p_extra != buf_fold) {
+          xfree(p_extra_free);
+          p_extra_free = xmalloc(n_extra);
+          memset(p_extra_free, ' ', n_extra);
+          memcpy(p_extra_free, p_extra, n_extra);
+          p_extra = p_extra_free;
+          ILOG("using foldtext");
+        } else {
+          // memcpy(buf_fold, p_extra, n_extra);
+          // p_extra = buf_fold;
+        }
+        ILOG("n_extra=%d", n_extra);
         c_extra = NUL;
         c_final = NUL;
-        memcpy(buf_fold, p_extra, n_extra);
-        p_extra = buf_fold;
         p_extra[n_extra] = NUL;
         // ILOG("p_extra = %s ", p_extra);
         // ILOG("p_extra lengthd = %d ", n_extra);
