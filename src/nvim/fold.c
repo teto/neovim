@@ -38,24 +38,7 @@
 #include "nvim/undo.h"
 #include "nvim/ops.h"
 
-/* local declarations. {{{1 */
-/* typedef fold_T {{{2 */
-/*
- * The toplevel folds for each window are stored in the w_folds growarray.
- * Each toplevel fold can contain an array of second level folds in the
- * fd_nested growarray.
- * The info stored in both growarrays is the same: An array of fold_T.
- */
-typedef struct {
-  linenr_T fd_top;              // first line of fold; for nested fold
-                                // relative to parent
-  linenr_T fd_len;              // number of lines in the fold
-  garray_T fd_nested;           // array of nested folds
-  char fd_flags;                // see below
-  TriState fd_small;            // kTrue, kFalse, or kNone: fold smaller than
-                                // 'foldminlines'; kNone applies to nested
-                                // folds too
-} fold_T;
+// local declarations. {{{1
 
 #define FD_OPEN         0       /* fold is open (nested ones can be closed) */
 #define FD_CLOSED       1       /* fold is closed */
@@ -141,6 +124,7 @@ int hasAnyFolding(win_T *win)
          && (!foldmethodIsManual(win) || !GA_EMPTY(&win->w_folds));
 }
 
+
 /* hasFolding() {{{2 */
 /*
  * Return TRUE if line "lnum" in the current window is part of a closed
@@ -175,6 +159,8 @@ bool hasFoldingWin(
   linenr_T first = 0;
   linenr_T last = 0;
   linenr_T lnum_rel = lnum;
+  colnr_T startcol = 0;
+  colnr_T endcol = 0;
   fold_T      *fp;
   int level = 0;
   bool use_level = false;
@@ -225,6 +211,9 @@ bool hasFoldingWin(
       if (had_folded) {
         /* Fold closed: Set last and quit loop. */
         last += fp->fd_len - 1;
+        // ExtmarkInfo mark = extmark_from_id(curbuf, fold_ns, fp->fd_mark_id);
+        startcol = fp->fd_startcol;
+        endcol = fp->fd_endcol;
         break;
       }
 
@@ -241,6 +230,8 @@ bool hasFoldingWin(
       infop->fi_level = level;
       infop->fi_lnum = lnum - lnum_rel;
       infop->fi_low_level = low_level == 0 ? level : low_level;
+      infop->fi_startcol = 0;
+      infop->fi_endcol = 0;
     }
     return false;
   }
@@ -256,6 +247,8 @@ bool hasFoldingWin(
     infop->fi_level = level + 1;
     infop->fi_lnum = first;
     infop->fi_low_level = low_level == 0 ? level + 1 : low_level;
+    infop->fi_startcol = startcol;
+    infop->fi_endcol = endcol;
   }
   return true;
 }
@@ -544,14 +537,16 @@ static int checkCloseRec(garray_T *gap, linenr_T lnum, int level)
  * Return TRUE if it's allowed to manually create or delete a fold.
  * Give an error message and return FALSE if not.
  */
-int foldManualAllowed(int create)
+int foldManualAllowed(win_T *wp, int create)
 {
-  if (foldmethodIsManual(curwin) || foldmethodIsMarker(curwin))
-    return TRUE;
-  if (create)
+  if (foldmethodIsManual(wp) || foldmethodIsMarker(wp)) {
+    return true;
+  }
+  if (create) {
     EMSG(_("E350: Cannot create fold with current 'foldmethod'"));
-  else
+  } else {
     EMSG(_("E351: Cannot delete fold with current 'foldmethod'"));
+  }
   return FALSE;
 }
 
@@ -667,7 +662,11 @@ void foldCreate(win_T *wp, pos_T start, pos_T end)
     /* insert new fold */
     fp->fd_nested = fold_ga;
     fp->fd_top = start_rel.lnum;
+    fp->fd_startcol = start_rel.col;
+    fp->fd_endcol = end_rel.col;
     fp->fd_len = end_rel.lnum - start_rel.lnum + 1;
+    ILOG("Insert new fold relnum=%ld startcol=%d endcol=%d",
+         fp->fd_top, fp->fd_startcol, fp->fd_endcol);
 
     /* We want the new fold to be closed.  If it would remain open because
      * of using 'foldlevel', need to adjust fd_flags of containing folds.
@@ -1087,14 +1086,12 @@ void cloneFoldGrowArray(garray_T *from, garray_T *to)
   }
 }
 
-/* foldFind() {{{2 */
-/*
- * Search for line "lnum" in folds of growarray "gap".
- * Set *fpp to the fold struct for the fold that contains "lnum" or
- * the first fold below it (careful: it can be beyond the end of the array!).
- * Returns FALSE when there is no fold that contains "lnum".
- */
-static bool foldFind(const garray_T *gap, linenr_T lnum, fold_T **fpp)
+// foldFind() {{{2
+/// Search for line "lnum" in folds of growarray "gap".
+/// Set *fpp to the fold struct for the fold that contains "lnum" or
+/// the first fold below it (careful: it can be beyond the end of the array!).
+/// Returns FALSE when there is no fold that contains "lnum".
+bool foldFind(const garray_T *gap, linenr_T lnum, fold_T **fpp)
 {
   linenr_T low, high;
   fold_T      *fp;
@@ -1675,6 +1672,7 @@ static void foldAddMarker(
   char_u      *line;
   char_u      *newline;
   char_u      *p = (char_u *)strstr((char *)buf->b_p_cms, "%s");
+  size_t      ins_offset;     // insert offset from start of line
   bool line_is_comment = false;
   linenr_T lnum = pos.lnum;
 
@@ -1687,17 +1685,24 @@ static void foldAddMarker(
     // Check if the line ends with an unclosed comment
     skip_comment(line, false, false, &line_is_comment);
     newline = xmalloc(line_len + markerlen + STRLEN(cms) + 1);
-    STRCPY(newline, line);
+    ins_offset = (size_t)pos.col;   // todo invalid for multibyte language
+    memcpy(newline, line, ins_offset);
     // Append the marker to the end of the line
     if (p == NULL || line_is_comment) {
-      STRLCPY(newline + line_len, marker, markerlen + 1);
+      memcpy(&newline[ins_offset], marker, markerlen);
+      // STRNCPY(newline + ins_offset, marker, markerlen + 1);
+      STRLCPY(newline + line_len + markerlen + 1, line + ins_offset,
+              line_len - ins_offset);
       added = markerlen;
     } else {
+      ILOG("TODO line is not a comment");
+      // todo fix all that
       STRCPY(newline + line_len, cms);
       memcpy(newline + line_len + (p - cms), marker, markerlen);
       STRCPY(newline + line_len + (p - cms) + markerlen, p + 2);
       added = markerlen + STRLEN(cms)-2;
     }
+    ILOG("Replacing with newline %s", newline);
     ml_replace_buf(buf, lnum, newline, false);
     if (added) {
       extmark_splice_cols(buf, (int)lnum-1, (int)line_len,
@@ -1818,6 +1823,10 @@ char_u *get_foldtext(win_T *wp, linenr_T lnum, linenr_T lnume,
     // Set "v:foldstart" and "v:foldend".
     set_vim_var_nr(VV_FOLDSTART, (varnumber_T) lnum);
     set_vim_var_nr(VV_FOLDEND, (varnumber_T) lnume);
+
+    // Set "v:foldstartcol" and "v:foldendcol".
+    set_vim_var_nr(VV_FOLDSTARTCOL, (varnumber_T)foldinfo.fi_startcol);
+    set_vim_var_nr(VV_FOLDENDCOL, (varnumber_T)foldinfo.fi_endcol);
 
     // Set "v:folddashes" to a string of "level" dashes.
     // Set "v:foldlevel" to "level".
@@ -3226,12 +3235,13 @@ static int put_folds_recurse(FILE *fd, garray_T *gap, linenr_T off)
     /* Do nested folds first, they will be created closed. */
     if (put_folds_recurse(fd, &fp->fd_nested, off + fp->fd_top) == FAIL)
       return FAIL;
-    if (fprintf(fd, "%" PRId64 ",%" PRId64 "fold",
-                (int64_t)(fp->fd_top + off),
-                (int64_t)(fp->fd_top + off + fp->fd_len - 1)) < 0
-        || put_eol(fd) == FAIL)
+    if (fprintf(fd, "%" PRId64 ".%d,%" PRId64 ".%dfold",
+                (int64_t)(fp->fd_top + off), fp->fd_startcol,
+                (int64_t)(fp->fd_top + off + fp->fd_len - 1), fp->fd_endcol) < 0
+        || put_eol(fd) == FAIL) {
       return FAIL;
-    ++fp;
+    }
+    fp++;
   }
   return OK;
 }
@@ -3297,4 +3307,4 @@ static int put_fold_open_close(FILE *fd, fold_T *fp, linenr_T off)
   return OK;
 }
 
-/* }}}1 */
+// }}}1
