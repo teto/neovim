@@ -305,8 +305,14 @@ bool nlua_pop_typval(lua_State *lstate, typval_T *ret_tv)
       }
       case LUA_TNUMBER: {
         const lua_Number n = lua_tonumber(lstate, -1);
-        if (n > (lua_Number)VARNUMBER_MAX || n < (lua_Number)VARNUMBER_MIN
-            || ((lua_Number)((varnumber_T)n)) != n) {
+        ELOG("number %f compared with %ld and %ld", n , VARNUMBER_MIN, VARNUMBER_MAX);
+        ELOG("number %f compared with %f and %f", n ,
+             (lua_Number)VARNUMBER_MIN,
+             (lua_Number)VARNUMBER_MAX
+             );
+        bool res1 = (long double)n > (long double)VARNUMBER_MAX;
+        bool res2 = (long double)n < (long double)VARNUMBER_MIN;
+        if (res1 || res2) {
           cur.tv->v_type = VAR_FLOAT;
           cur.tv->vval.v_float = (float_T)n;
         } else {
