@@ -49,6 +49,7 @@
 typedef struct {
   linenr_T fd_top;              // first line of fold; for nested fold
                                 // relative to parent
+  linenr_T fd_startcol;         // just for test/startcol
   linenr_T fd_len;              // number of lines in the fold
   garray_T fd_nested;           // array of nested folds
   char fd_flags;                // see below
@@ -667,6 +668,7 @@ void foldCreate(win_T *wp, pos_T start, pos_T end)
     /* insert new fold */
     fp->fd_nested = fold_ga;
     fp->fd_top = start_rel.lnum;
+    fp->fd_startcol = start_rel.col; // just for test
     fp->fd_len = end_rel.lnum - start_rel.lnum + 1;
 
     /* We want the new fold to be closed.  If it would remain open because

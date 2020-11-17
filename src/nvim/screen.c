@@ -2006,6 +2006,7 @@ static int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow,
   int n_extra = 0;                    // number of extra chars
   char_u      *p_extra = NULL;        // string of extra chars, plus NUL
   char_u      *p_extra_free = NULL;   // p_extra needs to be freed
+  char_u      *p_fold = NULL;         // p_extra needs to be freed
   int c_extra = NUL;                  // extra chars, all the same
   int c_final = NUL;                  // final char, mandatory if set
   int extra_attr = 0;                 // attributes when n_extra != 0
@@ -2901,37 +2902,31 @@ static int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow,
     if (draw_state == WL_FOLDTEXT - 1  // == SBR
         && foldinfo.fi_level != 0
         && foldinfo.fi_lines > 0
+        // TODO switch mode against current_fold->startcol
         && vcol == 0
         // && n_extra == 0
         && row == startrow) {
         char_attr = win_hl_attr(wp, HLF_FL);
 
         linenr_T lnume = lnum + foldinfo.fi_lines - 1;
-        // memset(buf_fold, ' ', FOLD_TEXT_LEN);
-        memset(buf_fold, '+', FOLD_TEXT_LEN);
-        p_extra = get_foldtext(wp, lnum, lnume, foldinfo, buf_fold);
-        n_extra = STRLEN(p_extra);
-
-        if (p_extra != buf_fold) {
-          xfree(p_extra_free);
-          p_extra_free = p_extra;
-        }
+        memset(buf_fold, ' ', FOLD_TEXT_LEN);
+        p_fold = get_foldtext(wp, lnum, lnume, foldinfo, buf_fold);
+        n_extra = STRLEN(p_fold);
+        xfree(p_extra_free);
+        // if (p_fold != buf_fold) {
+        //   xfree(p_extra_free);
+        //   p_extra_free = p_fold;
+        // }
         c_extra = NUL;
         c_final = NUL;
-        p_extra[n_extra] = NUL;
+        p_fold[n_extra] = NUL;
 
         // ptr = p_extra;
-        ptr = buf_fold;
+        ptr = p_fold;
 
         n_extra = 0;
         draw_state = WL_LINE;
     }
-    // else {
-    //   // if no fold to display move on to text
-    //   draw_state = WL_LINE;
-    //   ptr = line;
-
-    // }
 
     // if (draw_state == WL_LINE
     //     && foldinfo.fi_level != 0
@@ -3191,7 +3186,8 @@ static int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow,
     } else {
       int c0;
 
-      if (draw_state != WL_FOLDTEXT) {
+      // if (draw_state != WL_FOLDTEXT) {
+      if (draw_state != WL_LINE) {
         XFREE_CLEAR(p_extra_free);
       }
 
@@ -4126,6 +4122,12 @@ static int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow,
       char_attr = hl_combine_attr(line_attr_lowprio, char_attr);
     }
 
+    // if (draw_state == WL_FOLDTEXT) {
+    if (p_fold != NULL) {
+      char_attr = win_hl_attr(wp, HLF_FL);
+    }
+
+
     // Store character to be displayed.
     // Skip characters that are left of the screen for 'nowrap'.
     vcol_prev = vcol;
@@ -4347,6 +4349,7 @@ static int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow,
     cap_col = 0;
   }
 
+  xfree(p_fold);
   xfree(p_extra_free);
   xfree(err_text);
   return row;
