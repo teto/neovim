@@ -2120,6 +2120,8 @@ static int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow,
   int did_wcol        = false;
   int match_conc      = 0;              ///< cchar for match functions
   int old_boguscols = 0;
+  fold_T *fp = NULL;
+
 # define VCOL_HLC (vcol - vcol_off)
 # define FIX_FOR_BOGUSCOLS \
   { \
@@ -2138,6 +2140,7 @@ static int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow,
 
   char *err_text = NULL;
 
+  bool fold_found = foldFind(&wp->w_folds, lnum, &fp);
   buf_T *buf = wp->w_buffer;
 
   if (!number_only) {
