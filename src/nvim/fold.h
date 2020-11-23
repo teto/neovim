@@ -18,6 +18,7 @@ typedef struct foldinfo {
                                    other fields are invalid */
   int fi_low_level;             /* lowest fold level that starts in the same
                                    line */
+  long fi_lines;
   colnr_T fi_startcol;             /* starting column of the fold */
   colnr_T fi_endcol;               /* end column of the fold */
 } foldinfo_T;
@@ -31,7 +32,8 @@ typedef struct foldinfo {
 typedef struct {
   linenr_T fd_top;              // first line of fold; for nested fold
                                 // relative to parent
-  linenr_T fd_startcol;         // just for test/startcol
+  colnr_T fd_startcol;         // just for test/startcol
+  colnr_T fd_endcol;         // just for test/startcol
   linenr_T fd_len;              // number of lines in the fold
   garray_T fd_nested;           // array of nested folds
   char fd_flags;                // see below

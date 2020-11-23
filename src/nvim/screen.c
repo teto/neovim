@@ -2909,26 +2909,38 @@ static int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow,
         && vcol == 0
         // && n_extra == 0
         && row == startrow) {
+        XFREE_CLEAR(p_extra_free);
+
         char_attr = win_hl_attr(wp, HLF_FL);
 
         linenr_T lnume = lnum + foldinfo.fi_lines - 1;
         memset(buf_fold, ' ', FOLD_TEXT_LEN);
-        p_fold = get_foldtext(wp, lnum, lnume, foldinfo, buf_fold);
-        n_extra = STRLEN(p_fold);
-        xfree(p_extra_free);
-        // if (p_fold != buf_fold) {
-        //   xfree(p_extra_free);
-        //   p_extra_free = p_fold;
-        // }
+        p_extra = get_foldtext(wp, lnum, lnume, foldinfo, buf_fold);
+        n_extra = STRLEN(p_extra);
+        p_extra[n_extra] = NUL;
+
+        // we don't use the buf_fold buffer
+        if (p_extra != buf_fold) {
+          // xfree(p_extra_free);
+          p_fold = p_extra;
+        }
         c_extra = NUL;
         c_final = NUL;
-        p_fold[n_extra] = NUL;
 
         // ptr = p_extra;
-        ptr = p_fold;
+        ptr = p_extra;
 
-        n_extra = 0;
+        n_extra = 0;  // to bypass old mechanism
+    }
+
+    if (draw_state == WL_FOLDTEXT
+        // && fp->fd_endcol == vcol
+       ) {
+      if (*ptr == 0) {
+        // when we reach the end of the folded text, revert back to original
+        // text
         draw_state = WL_LINE;
+      }
     }
 
     // if (draw_state == WL_LINE
@@ -3182,17 +3194,10 @@ static int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow,
         p_extra++;
       }
       n_extra--;
-    // } else if (foldinfo.fi_lines > 0) {
-    //   // skip writing the buffer line itself
-    //   c = NUL;
-    //   XFREE_CLEAR(p_extra_free);
     } else {
       int c0;
 
-      // if (draw_state != WL_FOLDTEXT) {
-      if (draw_state != WL_LINE) {
-        XFREE_CLEAR(p_extra_free);
-      }
+      XFREE_CLEAR(p_extra_free);
 
       // Get a character from the line itself.
       c0 = c = *ptr;
@@ -4352,7 +4357,9 @@ static int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow,
     cap_col = 0;
   }
 
-  xfree(p_fold);
+  if (p_fold) {
+    XFREE_CLEAR(p_fold);
+  }
   xfree(p_extra_free);
   xfree(err_text);
   return row;

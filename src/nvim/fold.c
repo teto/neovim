@@ -182,6 +182,8 @@ bool hasFoldingWin(
   linenr_T first = 0;
   linenr_T last = 0;
   linenr_T lnum_rel = lnum;
+  colnr_T startcol = 0;
+  colnr_T endcol = 0;
   fold_T      *fp;
   int level = 0;
   bool use_level = false;
@@ -232,6 +234,9 @@ bool hasFoldingWin(
       if (had_folded) {
         /* Fold closed: Set last and quit loop. */
         last += fp->fd_len - 1;
+        // ExtmarkInfo mark = extmark_from_id(curbuf, fold_ns, fp->fd_mark_id);
+        startcol = fp->fd_startcol;
+        endcol = fp->fd_endcol;
         break;
       }
 
@@ -248,6 +253,8 @@ bool hasFoldingWin(
       infop->fi_level = level;
       infop->fi_lnum = lnum - lnum_rel;
       infop->fi_low_level = low_level == 0 ? level : low_level;
+      infop->fi_startcol = 0;
+      infop->fi_endcol = 0;
     }
     return false;
   }
@@ -263,6 +270,9 @@ bool hasFoldingWin(
     infop->fi_level = level + 1;
     infop->fi_lnum = first;
     infop->fi_low_level = low_level == 0 ? level + 1 : low_level;
+    infop->fi_startcol = startcol;
+    // TODO set endcol
+    infop->fi_endcol = endcol;
   }
   return true;
 }
@@ -675,7 +685,9 @@ void foldCreate(win_T *wp, pos_T start, pos_T end)
     fp->fd_nested = fold_ga;
     fp->fd_top = start_rel.lnum;
     fp->fd_startcol = start_rel.col; // just for test
+    fp->fd_endcol = end_rel.col; // just for test
     fp->fd_len = end_rel.lnum - start_rel.lnum + 1;
+    ILOG("Insert new fold startcol=%d endcold=%d", fp->fd_startcol, fp->fd_endcol);
 
     /* We want the new fold to be closed.  If it would remain open because
      * of using 'foldlevel', need to adjust fd_flags of containing folds.
@@ -1826,8 +1838,8 @@ char_u *get_foldtext(win_T *wp, linenr_T lnum, linenr_T lnume,
     set_vim_var_nr(VV_FOLDEND, (varnumber_T) lnume);
 
     // Set "v:foldstartcol" and "v:foldendcol".
-    set_vim_var_nr(VV_FOLDSTARTCOL, (varnumber_T)foldinfo->fi_startcol);
-    set_vim_var_nr(VV_FOLDENDCOL, (varnumber_T)foldinfo->fi_endcol);
+    set_vim_var_nr(VV_FOLDSTARTCOL, (varnumber_T)foldinfo.fi_startcol);
+    set_vim_var_nr(VV_FOLDENDCOL, (varnumber_T)foldinfo.fi_endcol);
 
     // Set "v:folddashes" to a string of "level" dashes.
     // Set "v:foldlevel" to "level".
