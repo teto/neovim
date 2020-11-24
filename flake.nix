@@ -7,32 +7,38 @@
 
   outputs = { self, nixpkgs }: let
     system = "x86_64-linux";
+    legacyPkgs = nixpkgs.legacyPackages."${system}".pkgs;
+    pkgs = legacyPkgs;
   in {
 
-    packages."${system}".neovim-dev = let
-      lib = nixpkgs.lib;
-      pkgs = nixpkgs.legacyPackages."${system}".pkgs;
-      pythonEnv = nixpkgs.legacyPackages."${system}".pkgs.python3;
-      devMode = true;
-      in (pkgs.neovim-unwrapped.override {
-          # doCheck = true;
-          stdenv = pkgs.llvmPackages_latest.stdenv;
-      }).overrideAttrs(oa:{
-        cmakeBuildType="debug";
-        cmakeFlags = oa.cmakeFlags ++ [
-          "-DMIN_LOG_LEVEL=0"
-          "-DENABLE_LTO=OFF"
-          "-DUSE_BUNDLED=OFF"
-          # https://github.com/google/sanitizers/wiki/AddressSanitizerFlags
-          # https://clang.llvm.org/docs/AddressSanitizer.html#symbolizing-the-reports
-          "-DCLANG_ASAN_UBSAN=ON"
-	];
-
-
+    packages."${system}" = rec {
+      neovim-unwrapped-master = legacyPkgs.neovim-unwrapped.overrideAttrs(oa: {
         version = "master";
         src = ./.;
-        nativeBuildInputs = oa.nativeBuildInputs
-          ++ lib.optionals devMode (with pkgs; [
+      });
+
+      # a development binary to help debug issues
+      # brings development tools as well
+      neovim-unwrapped-debug = let
+        lib = nixpkgs.lib;
+        pythonEnv = legacyPkgs.python3;
+        luacheck = legacyPkgs.luaPackages.luacheck;
+      in (neovim-unwrapped-master.override {
+            stdenv = pkgs.llvmPackages_latest.stdenv;
+            lua = pkgs.enableDebugging legacyPkgs.luajit;
+        }).overrideAttrs(oa:{
+          cmakeBuildType="Debug";
+          cmakeFlags = oa.cmakeFlags ++ [
+            "-DLUACHECK_PRG=${luacheck}/bin/luacheck"
+            "-DMIN_LOG_LEVEL=0"
+            "-DENABLE_LTO=OFF"
+            "-DUSE_BUNDLED=OFF"
+            # https://github.com/google/sanitizers/wiki/AddressSanitizerFlags
+            # https://clang.llvm.org/docs/AddressSanitizer.html#symbolizing-the-reports
+            "-DCLANG_ASAN_UBSAN=ON"
+          ];
+
+        nativeBuildInputs = oa.nativeBuildInputs ++ (with pkgs; [
             pythonEnv
             include-what-you-use  # for scripts/check-includes.py
             jq                    # jq for scripts/vim-patch.sh -r
@@ -51,14 +57,28 @@
           export UBSAN_OPTIONS=print_stacktrace=1
         '';
       });
+    };
 
-    defaultPackage."${system}" = self.packages.x86_64-linux.neovim-dev;
+    defaultPackage."${system}" = self.packages.x86_64-linux.neovim-unwrapped-master;
 
-    apps."${system}".nvim = {
-      type = "app";
-      program = self.packages."${system}".neovim-dev + "/bin/nvim";
+    overlay = final: prev: {
+      inherit (self.packages."${system}") neovim-unwrapped-master;
+    };
+
+    apps."${system}" = {
+      nvim = {
+        type = "app";
+        program = self.packages."${system}".neovim-unwrapped-master + "/bin/nvim";
+      };
+
+      nvim-debug = {
+        type = "app";
+        program = self.packages."${system}".neovim-unwrapped-debug + "/bin/nvim";
+      };
     };
 
     defaultApp."${system}" = self.apps."${system}".nvim;
+
+    # devShell = self.packages."${system}".neovim-unwrapped-debug;
   };
 }
