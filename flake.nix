@@ -15,6 +15,10 @@
       neovim-unwrapped-master = legacyPkgs.neovim-unwrapped.overrideAttrs(oa: {
         version = "master";
         src = ./.;
+
+        buildInputs = oa.buildInputs ++ ([
+          pkgs.tree-sitter
+        ]);
       });
 
       # a development binary to help debug issues
@@ -44,10 +48,6 @@
             jq                    # jq for scripts/vim-patch.sh -r
             doxygen
           ]);
-
-        buildInputs = oa.buildInputs ++ ([
-          pkgs.tree-sitter
-        ]);
 
         shellHook = oa.shellHook + ''
           export NVIM_PYTHON_LOG_LEVEL=DEBUG
