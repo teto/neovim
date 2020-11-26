@@ -2120,7 +2120,7 @@ static int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow,
   int did_wcol        = false;
   int match_conc      = 0;              ///< cchar for match functions
   int old_boguscols = 0;
-  fold_T *fp = NULL;
+  fold_T *fp = NULL;                    ///< current fold when found
 
 # define VCOL_HLC (vcol - vcol_off)
 # define FIX_FOR_BOGUSCOLS \
@@ -2906,7 +2906,8 @@ static int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow,
         && foldinfo.fi_level != 0
         && foldinfo.fi_lines > 0
         // TODO switch mode against current_fold->startcol
-        && vcol == 0
+        && vcol >= fp->fd_startcol
+        && p_fold == NULL
         // && n_extra == 0
         && row == startrow) {
         XFREE_CLEAR(p_extra_free);
