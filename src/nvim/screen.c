@@ -4130,9 +4130,24 @@ static int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow,
       char_attr = hl_combine_attr(line_attr_lowprio, char_attr);
     }
 
-    // if (draw_state == WL_FOLDTEXT) {
-    if (p_fold != NULL) {
-      char_attr = win_hl_attr(wp, HLF_FL);
+    if (
+        draw_state >WL_NR
+        // draw_state >= WL_FOLDTEXT
+        // true
+
+        && foldinfo.fi_lines > 0) {
+      ILOG("FoldedLight attribute");
+
+      if (p_fold != NULL) {
+        char_attr = win_hl_attr(wp, HLF_FL);
+        // char_attr = hl_combine_attr(win_hl_attr(wp, HLF_FL), char_attr);
+      } else {
+        char_attr = win_hl_attr(wp, HLF_FLL);
+        // char_attr = hl_combine_attr(win_hl_attr(wp, HLF_FLL), char_attr);
+      }
+
+    } else {
+      ILOG("skipping 'cos %d", draw_state);
     }
 
 

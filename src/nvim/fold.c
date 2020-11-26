@@ -687,7 +687,8 @@ void foldCreate(win_T *wp, pos_T start, pos_T end)
     fp->fd_startcol = start_rel.col; // just for test
     fp->fd_endcol = end_rel.col; // just for test
     fp->fd_len = end_rel.lnum - start_rel.lnum + 1;
-    ILOG("Insert new fold startcol=%d endcold=%d", fp->fd_startcol, fp->fd_endcol);
+    ILOG("Insert new fold relnum=%ld startcol=%d endcol=%d",
+         fp->fd_top, fp->fd_startcol, fp->fd_endcol);
 
     /* We want the new fold to be closed.  If it would remain open because
      * of using 'foldlevel', need to adjust fd_flags of containing folds.
