@@ -1694,6 +1694,7 @@ static void foldAddMarker(
   char_u      *line;
   char_u      *newline;
   char_u      *p = (char_u *)strstr((char *)buf->b_p_cms, "%s");
+  size_t      ins_offset;     // offset from start of line to where to insert marker
   bool line_is_comment = false;
   linenr_T lnum = pos.lnum;
 
@@ -1706,17 +1707,21 @@ static void foldAddMarker(
     // Check if the line ends with an unclosed comment
     skip_comment(line, false, false, &line_is_comment);
     newline = xmalloc(line_len + markerlen + STRLEN(cms) + 1);
-    STRCPY(newline, line);
+    ins_offset = (size_t)pos.col;   /// TODO invalid for multibyte language
+    STRNCPY(newline, line, ins_offset);
     // Append the marker to the end of the line
     if (p == NULL || line_is_comment) {
-      STRLCPY(newline + line_len, marker, markerlen + 1);
+      STRNCPY(newline + ins_offset, marker, markerlen + 1);
+      STRLCPY(newline + line_len + markerlen + 1, line + ins_offset, line_len - ins_offset);
       added = markerlen;
     } else {
+      // TODO fix all that
       STRCPY(newline + line_len, cms);
       memcpy(newline + line_len + (p - cms), marker, markerlen);
       STRCPY(newline + line_len + (p - cms) + markerlen, p + 2);
       added = markerlen + STRLEN(cms)-2;
     }
+    ILOG("Replacing with newline %s", newline);
     ml_replace_buf(buf, lnum, newline, false);
     if (added) {
       extmark_splice_cols(buf, (int)lnum-1, (int)line_len,
