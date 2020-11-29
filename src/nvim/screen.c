@@ -2104,7 +2104,7 @@ static int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow,
 # define WL_SIGN        WL_FOLD + 1     /* column for signs */
 #define WL_NR           WL_SIGN + 1     /* line number */
 # define WL_BRI         WL_NR + 1       /* 'breakindent' */
-# define WL_SBR         WL_BRI + 1       /* 'showbreak' or 'diff' */
+# define WL_SBR         WL_BRI + 1       // 'showbreak' or 'diff'
 #define WL_FOLDTEXT     WL_SBR + 1      /* text representing a fold */
 #define WL_LINE         WL_FOLDTEXT + 1 /* text in the line */
   int draw_state = WL_START;            /* what to draw next */
@@ -2650,7 +2650,7 @@ static int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow,
           char_attr = win_hl_attr(wp, HLF_AT);
           utf_char2bytes(cmdwin_type, extra);
           ptr = extra;
-          // TODO add a null
+          // todo add a null
           // current_content = &c_extra;
         }
       }
@@ -2906,6 +2906,7 @@ static int win_line(win_T *wp, linenr_T lnum, int startrow, int endrow,
         && foldinfo.fi_level != 0
         && foldinfo.fi_lines > 0
         // TODO switch mode against current_fold->startcol
+        // Depends on foldinline settings
         && vcol >= fp->fd_startcol
         && p_fold == NULL
         // && n_extra == 0
