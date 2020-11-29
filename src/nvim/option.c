@@ -5161,19 +5161,19 @@ int makeset(FILE *fd, int opt_flags, int local_only)
 
 /// Generate set commands for the local fold options only.  Used when
 /// 'sessionoptions' or 'viewoptions' contains "folds" but not "options".
-int makefoldset(FILE *fd)
+int makefoldset(FILE *fd, win_T *const wp)
 {
-  if (put_setstring(fd, "setlocal", "fdm", &curwin->w_p_fdm, 0) == FAIL
-      || put_setstring(fd, "setlocal", "fde", &curwin->w_p_fde, 0)
+  if (put_setstring(fd, "setlocal", "fdm", &wp->w_p_fdm, 0) == FAIL
+      || put_setstring(fd, "setlocal", "fde", &wp->w_p_fde, 0)
       == FAIL
-      || put_setstring(fd, "setlocal", "fmr", &curwin->w_p_fmr, 0)
+      || put_setstring(fd, "setlocal", "fmr", &wp->w_p_fmr, 0)
       == FAIL
-      || put_setstring(fd, "setlocal", "fdi", &curwin->w_p_fdi, 0)
+      || put_setstring(fd, "setlocal", "fdi", &wp->w_p_fdi, 0)
       == FAIL
-      || put_setnum(fd, "setlocal", "fdl", &curwin->w_p_fdl) == FAIL
-      || put_setnum(fd, "setlocal", "fml", &curwin->w_p_fml) == FAIL
-      || put_setnum(fd, "setlocal", "fdn", &curwin->w_p_fdn) == FAIL
-      || put_setbool(fd, "setlocal", "fen", curwin->w_p_fen) == FAIL
+      || put_setnum(fd, "setlocal", "fdl", &wp->w_p_fdl) == FAIL
+      || put_setnum(fd, "setlocal", "fml", &wp->w_p_fml) == FAIL
+      || put_setnum(fd, "setlocal", "fdn", &wp->w_p_fdn) == FAIL
+      || put_setbool(fd, "setlocal", "fen", wp->w_p_fen) == FAIL
       ) {
     return FAIL;
   }
