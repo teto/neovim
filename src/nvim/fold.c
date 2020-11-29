@@ -537,14 +537,16 @@ static int checkCloseRec(garray_T *gap, linenr_T lnum, int level)
  * Return TRUE if it's allowed to manually create or delete a fold.
  * Give an error message and return FALSE if not.
  */
-int foldManualAllowed(int create)
+int foldManualAllowed(win_T *wp, int create)
 {
-  if (foldmethodIsManual(curwin) || foldmethodIsMarker(curwin))
-    return TRUE;
-  if (create)
+  if (foldmethodIsManual(wp) || foldmethodIsMarker(wp)) {
+    return true;
+  }
+  if (create) {
     EMSG(_("E350: Cannot create fold with current 'foldmethod'"));
-  else
+  } else {
     EMSG(_("E351: Cannot delete fold with current 'foldmethod'"));
+  }
   return FALSE;
 }
 
