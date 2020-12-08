@@ -12,26 +12,39 @@
   in {
 
     packages."${system}" = rec {
-      neovim-unwrapped-master = legacyPkgs.neovim-unwrapped.overrideAttrs(oa: {
+
+      neovim = legacyPkgs.neovim-unwrapped.overrideAttrs(oa: {
         version = "master";
         src = ../.;
 
         buildInputs = oa.buildInputs ++ ([
           pkgs.tree-sitter
         ]);
+
+        cmakeFlags = oa.cmakeFlags ++ [
+          "-DUSE_BUNDLED=OFF"
+        ];
       });
 
       # a development binary to help debug issues
+      neovim-debug = (neovim.override {
+          stdenv = pkgs.llvmPackages_latest.stdenv;
+          lua = pkgs.enableDebugging legacyPkgs.luajit;
+        }).overrideAttrs(oa:{
+          cmakeBuildType="Debug";
+          cmakeFlags = oa.cmakeFlags ++ [
+            "-DMIN_LOG_LEVEL=0"
+          ];
+      });
+
+      # for neovim developers, very slow
       # brings development tools as well
-      neovim-unwrapped-debug = let
+      neovim-developer = let
         lib = nixpkgs.lib;
         pythonEnv = legacyPkgs.python3;
         luacheck = legacyPkgs.luaPackages.luacheck;
-      in (neovim-unwrapped-master.override {
-            stdenv = pkgs.llvmPackages_latest.stdenv;
-            lua = pkgs.enableDebugging legacyPkgs.luajit;
-        }).overrideAttrs(oa:{
-          cmakeBuildType="Debug";
+      in
+        neovim-debug.overrideAttrs(oa: {
           cmakeFlags = oa.cmakeFlags ++ [
             "-DLUACHECK_PRG=${luacheck}/bin/luacheck"
             "-DMIN_LOG_LEVEL=0"
@@ -47,7 +60,7 @@
             include-what-you-use  # for scripts/check-includes.py
             jq                    # jq for scripts/vim-patch.sh -r
             doxygen
-          ]);
+        ]);
 
         shellHook = oa.shellHook + ''
           export NVIM_PYTHON_LOG_LEVEL=DEBUG
@@ -59,24 +72,24 @@
       });
     };
 
-    defaultPackage."${system}" = self.packages.x86_64-linux.neovim-unwrapped-master;
+    defaultPackage."${system}" = self.packages."${system}".neovim;
 
     overlay = final: prev: {
-      inherit (self.packages."${system}") neovim-unwrapped-master neovim-unwrapped-debug;
+      inherit (self.packages."${system}") neovim neovim-debug;
     };
 
-    apps."${system}" = {
-      nvim = {
+    apps."${system}" = let
+      mkApp = pkg: {
         type = "app";
-        program = self.packages."${system}".neovim-unwrapped-master + "/bin/nvim";
+        program = pkg + "/bin/nvim";
       };
-
-      nvim-debug = {
-        type = "app";
-        program = self.packages."${system}".neovim-unwrapped-debug + "/bin/nvim";
-      };
+    in {
+      nvim = mkApp self.packages."${system}".neovim + "/bin/nvim";
+      nvim-debug = mkApp self.packages."${system}".neovim-debug + "/bin/nvim";
     };
 
     defaultApp."${system}" = self.apps."${system}".nvim;
+
+    devShell."${system}" = self.packages."${system}".neovim-developer;
   };
 }
