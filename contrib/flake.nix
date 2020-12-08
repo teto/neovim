@@ -14,7 +14,7 @@
     packages."${system}" = rec {
       neovim-unwrapped-master = legacyPkgs.neovim-unwrapped.overrideAttrs(oa: {
         version = "master";
-        src = ./.;
+        src = ../.;
 
         buildInputs = oa.buildInputs ++ ([
           pkgs.tree-sitter
