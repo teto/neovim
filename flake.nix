@@ -62,7 +62,7 @@
     defaultPackage."${system}" = self.packages.x86_64-linux.neovim-unwrapped-master;
 
     overlay = final: prev: {
-      inherit (self.packages."${system}") neovim-unwrapped-master;
+      inherit (self.packages."${system}") neovim-unwrapped-master neovim-unwrapped-debug;
     };
 
     apps."${system}" = {
@@ -78,7 +78,5 @@
     };
 
     defaultApp."${system}" = self.apps."${system}".nvim;
-
-    # devShell = self.packages."${system}".neovim-unwrapped-debug;
   };
 }
