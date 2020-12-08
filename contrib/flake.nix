@@ -84,8 +84,8 @@
         program = pkg + "/bin/nvim";
       };
     in {
-      nvim = mkApp self.packages."${system}".neovim + "/bin/nvim";
-      nvim-debug = mkApp self.packages."${system}".neovim-debug + "/bin/nvim";
+      nvim = mkApp self.packages."${system}".neovim;
+      nvim-debug = mkApp self.packages."${system}".neovim-debug;
     };
 
     defaultApp."${system}" = self.apps."${system}".nvim;
