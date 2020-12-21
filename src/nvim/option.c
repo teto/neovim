@@ -5540,6 +5540,7 @@ static char_u *get_varp(vimoption_T *p)
   case PV_FDI:    return (char_u *)&(curwin->w_p_fdi);
   case PV_FDL:    return (char_u *)&(curwin->w_p_fdl);
   case PV_FDM:    return (char_u *)&(curwin->w_p_fdm);
+  case PV_FDS:    return (char_u *)&(curwin->w_p_fds);
   case PV_FML:    return (char_u *)&(curwin->w_p_fml);
   case PV_FDN:    return (char_u *)&(curwin->w_p_fdn);
   case PV_FDE:    return (char_u *)&(curwin->w_p_fde);

@@ -962,7 +962,7 @@ return {
       defaults={if_true={vi="0"}}
     },
     {
-      full_name='foldinline', abbreviation='fin',
+      full_name='foldsettings', abbreviation='fds',
       short_desc=N_("various fold-related settings"),
       type='bool', scope={'window'},
       vi_def=false,
