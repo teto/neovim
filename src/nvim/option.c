@@ -309,6 +309,7 @@ static char *(p_bufhidden_values[]) = { "hide", "unload", "delete",
 static char *(p_bs_values[]) =        { "indent", "eol", "start", NULL };
 static char *(p_fdm_values[]) =       { "manual", "expr", "marker", "indent",
                                         "syntax",  "diff", NULL };
+static char *(p_fds_values[]) =       { "inline", "syntax", NULL };
 static char *(p_fcl_values[]) =       { "all", NULL };
 static char *(p_cot_values[]) =       { "menu", "menuone", "longest", "preview",
                                         "noinsert", "noselect", NULL };
@@ -2984,6 +2985,16 @@ ambw_end:
       if (foldmethodIsDiff(curwin)) {
         newFoldLevel();
       }
+    }
+  } else if (gvarp == &curwin->w_allbuf_opt.wo_fds) {  // 'foldsettings'
+    if (check_opt_strings(*varp, p_fds_values, false) != OK
+        || *curwin->w_p_fds == NUL) {
+      errmsg = e_invarg;
+    } else {
+    //   foldUpdateAll(curwin);
+    //   if (foldmethodIsDiff(curwin)) {
+    //     newFoldLevel();
+    //   }
     }
   } else if (varp == &curwin->w_p_fde) {  // 'foldexpr'
     if (foldmethodIsExpr(curwin)) {
@@ -5723,6 +5734,7 @@ static void check_winopt(winopt_T *wop)
   check_string_option(&wop->wo_fdi);
   check_string_option(&wop->wo_fdm);
   check_string_option(&wop->wo_fdm_save);
+  check_string_option(&wop->wo_fds);
   check_string_option(&wop->wo_fde);
   check_string_option(&wop->wo_fdt);
   check_string_option(&wop->wo_fmr);
@@ -5745,6 +5757,7 @@ void clear_winopt(winopt_T *wop)
   clear_string_option(&wop->wo_fdi);
   clear_string_option(&wop->wo_fdm);
   clear_string_option(&wop->wo_fdm_save);
+  clear_string_option(&wop->wo_fds);
   clear_string_option(&wop->wo_fde);
   clear_string_option(&wop->wo_fdt);
   clear_string_option(&wop->wo_fmr);

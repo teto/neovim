@@ -186,12 +186,12 @@ typedef struct {
   int wo_fdl_save;
   // 'foldlevel' state saved for diff mode
 # define w_p_fdl_save w_onebuf_opt.wo_fdl_save
-  char_u      *wo_fds;
-# define w_p_fds w_onebuf_opt.wo_fds    // 'foldsettings'
   char_u      *wo_fdm;
 # define w_p_fdm w_onebuf_opt.wo_fdm    // 'foldmethod'
   char_u      *wo_fdm_save;
 # define w_p_fdm_save w_onebuf_opt.wo_fdm_save  // 'fdm' saved for diff mode
+  char_u      *wo_fds;
+# define w_p_fds w_onebuf_opt.wo_fds    // 'foldsettings'
   long wo_fml;
 # define w_p_fml w_onebuf_opt.wo_fml    // 'foldminlines'
   long wo_fdn;
