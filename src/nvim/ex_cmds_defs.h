@@ -153,6 +153,8 @@ struct exarg {
   int addr_count;               ///< the number of addresses given
   linenr_T line1;               ///< the first line number
   linenr_T line2;               ///< the second line number or count
+  colnr_T col1;                 ///< the first column number
+  colnr_T col2;                 ///< the last column number
   int addr_type;                ///< type of the count/range
   int flags;                    ///< extra flags after count: EXFLAG_
   char_u      *do_ecmd_cmd;     ///< +command arg to be used in edited file
