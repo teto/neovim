@@ -459,7 +459,9 @@ describe('user config init', function()
   end)
 
   it('loads init.lua from XDG config home by default', function()
-    clear{args_rm={'-u' }, env={ XDG_CONFIG_HOME=xconfig ; XDG_DATA_HOME=xconfig}}
+    clear{args_rm={'-u' }, env={ XDG_CONFIG_HOME=xconfig; XDG_DATA_DIRS="" }}
+    -- eq(1, eval('rtp'))
+    eq('', eval('$XDG_CONFIG_HOME'))
     eq(1, eval('g:lua_rc'))
     eq(init_lua_path, eval('$MYVIMRC'))
   end)

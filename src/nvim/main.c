@@ -1815,6 +1815,7 @@ static bool do_user_initialization(void)
     char_u *vimrc_path = (char_u *)stdpaths_user_conf_subpath("init.vim");
 
     if (os_path_exists(vimrc_path)) {
+      ILOG("Conflicting configs: \"%s\" \"%s\"", init_lua_path, vimrc_path);
       EMSG3(_("Conflicting configs: \"%s\" \"%s\""), init_lua_path, vimrc_path);
     }
 

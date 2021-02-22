@@ -773,12 +773,13 @@ char *runtimepath_default(bool clean_arg)
       rtp_size += vimruntime_len + memcnt(vimruntime, ',', vimruntime_len) + 1;
     }
   }
-  if (libdir != NULL) {
-    libdir_len = strlen(libdir);
-    if (libdir_len != 0) {
-      rtp_size += libdir_len + memcnt(libdir, ',', libdir_len) + 1;
-    }
-  }
+  // if (libdir != NULL) {
+  //   DLOG("Appending to rtp from libdir %s", libdir);
+  //   libdir_len = strlen(libdir);
+  //   if (libdir_len != 0) {
+  //     rtp_size += libdir_len + memcnt(libdir, ',', libdir_len) + 1;
+  //   }
+  // }
   rtp_size += compute_double_env_sep_len(data_dirs,
                                          NVIM_SIZE + 1 + SITE_SIZE + 1,
                                          AFTER_SIZE + 1);
@@ -789,24 +790,36 @@ char *runtimepath_default(bool clean_arg)
   }
   char *const rtp = xmalloc(rtp_size);
   char *rtp_cur = rtp;
+  memset(rtp, NUL, rtp_size);
+  DLOG("rtp before config home: %s\n", rtp);
   rtp_cur = add_dir(rtp_cur, config_home, config_len, kXDGConfigHome,
                     NULL, 0, NULL, 0);
+  DLOG("rtp before config_dirs: %s\n", rtp);
   rtp_cur = add_env_sep_dirs(rtp_cur, config_dirs, NULL, 0, NULL, 0, true);
+  DLOG("rtp before data_home: %s\n", rtp);
   rtp_cur = add_dir(rtp_cur, data_home, data_len, kXDGDataHome,
                     "site", SITE_SIZE, NULL, 0);
+  DLOG("rtp after data_home: %s\n", rtp);
   rtp_cur = add_env_sep_dirs(rtp_cur, data_dirs, "site", SITE_SIZE, NULL, 0,
                              true);
+  DLOG("rtp after data_dirs site: %s\n", rtp);
   rtp_cur = add_dir(rtp_cur, vimruntime, vimruntime_len, kXDGNone,
                     NULL, 0, NULL, 0);
-  rtp_cur = add_dir(rtp_cur, libdir, libdir_len, kXDGNone, NULL, 0, NULL, 0);
+  // rtp_cur = add_dir(rtp_cur, libdir, libdir_len, kXDGNone, NULL, 0, NULL, 0);
+  DLOG("rtp before libdir: %s\n", rtp);
   rtp_cur = add_env_sep_dirs(rtp_cur, data_dirs, "site", SITE_SIZE,
                              "after", AFTER_SIZE, false);
+  DLOG("rtp after data_dirs after: %s\n", rtp);
+
+  // DLOG("rtp3: %s\n", rtp);
+
   rtp_cur = add_dir(rtp_cur, data_home, data_len, kXDGDataHome,
                     "site", SITE_SIZE, "after", AFTER_SIZE);
   rtp_cur = add_env_sep_dirs(rtp_cur, config_dirs, "after", AFTER_SIZE, NULL, 0,
                              false);
   rtp_cur = add_dir(rtp_cur, config_home, config_len, kXDGConfigHome,
                     "after", AFTER_SIZE, NULL, 0);
+  // DLOG("rtp4: %s\n", rtp);
   // Strip trailing comma.
   rtp_cur[-1] = NUL;
   assert((size_t)(rtp_cur - rtp) == rtp_size);
@@ -818,6 +831,8 @@ char *runtimepath_default(bool clean_arg)
   xfree(config_home);
   xfree(vimruntime);
   xfree(libdir);
+
+  DLOG("final default rtp: %s\n", rtp);
 
   return rtp;
 }
