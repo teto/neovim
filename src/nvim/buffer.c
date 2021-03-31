@@ -5517,6 +5517,7 @@ int buf_signcols(buf_T *buf)
         // Check if we need to redraw
         if (buf->b_signcols_max != buf->b_signcols) {
             buf->b_signcols = buf->b_signcols_max;
+            setcursor();
             redraw_buf_later(buf, NOT_VALID);
         }
     }
