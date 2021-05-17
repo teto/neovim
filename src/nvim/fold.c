@@ -130,6 +130,9 @@ void copyFoldingState(win_T *wp_from, win_T *wp_to)
   cloneFoldGrowArray(&wp_from->w_folds, &wp_to->w_folds);
 }
 
+
+// test
+
 /* hasAnyFolding() {{{2 */
 /*
  * Return TRUE if there may be folded lines in the current window.
