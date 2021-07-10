@@ -11,7 +11,7 @@ ROOT := ../../..
 
 export SHELL := sh
 export NVIM_PRG := $(NVIM_PRG)
-export TMPDIR := $(abspath Xtest-tmpdir)
+export TMPDIR ?= $(abspath Xtest-tmpdir)
 
 SCRIPTS_DEFAULT = \
 	test42.out             \
@@ -74,7 +74,7 @@ nongui: nolog $(FIXFF) $(SCRIPTS) newtests report
 
 .gdbinit:
 	@echo "[OLDTEST-PREP] Setting up .gdbinit"
-	@echo 'set $$_exitcode = -1\nrun\nif $$_exitcode != -1\n  quit\nend' > .gdbinit
+	# @echo 'set $$_exitcode = -1\nrun\nif $$_exitcode != -1\n  quit\nend' > $(TMPDIR)/.gdbinit
 
 report:
 	$(NVIM_PRG) -u NONE $(NO_INITS) -S summarize.vim messages
@@ -179,4 +179,4 @@ newtestssilent: $(NEW_TESTS_RES)
 	@echo "[OLDTEST] Running" $*
 	@rm -rf $*.failed test.ok $(RM_ON_RUN)
 	@mkdir -p $(TMPDIR)
-	@/bin/sh runnvim.sh $(ROOT) $(NVIM_PRG) $* $(RUN_VIMTEST) $(NO_INITS) -u NONE -S runtest.vim $*.vim
+	@/bin/sh $(ROOT)/src/nvim/testdir/runnvim.sh $(ROOT) $(NVIM_PRG) $* $(RUN_VIMTEST) $(NO_INITS) -u NONE -S runtest.vim $*.vim

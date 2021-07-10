@@ -11,11 +11,16 @@
       overlay = final: prev:
         let
           pkgs = nixpkgs.legacyPackages.${prev.system};
+
+          # defaults to false in nixpkgs
+          doCheck = false;
         in
         rec {
           neovim = pkgs.neovim-unwrapped.overrideAttrs (oa: {
             version = "master";
             src = ../.;
+
+            inherit doCheck;
           });
 
           # a development binary to help debug issues
@@ -60,6 +65,13 @@
           inherit system;
         };
 
+        # TODO retreive the one from the package instead
+        neovimLuaEnv = pkgs.lua.withPackages(ps:
+          (with ps; [ lpeg luabitop mpack # nvim-client luv coxpcall
+            nvim-client luv coxpcall busted luafilesystem penlight inspect
+            ]
+          ));
+
         pythonEnv = pkgs.python3.withPackages(ps: [
           ps.msgpack
           ps.flake8  # for 'make pylint'
@@ -81,6 +93,53 @@
             nativeBuildInputs = [ pkgs.shellcheck ];
             preferLocalBuild = true;
             } "make -C ${./..} shlint > $out";
+
+          # not very efficient since it would rebuild all of neovim everytime
+          oldtests = pkgs.runCommandNoCC "oldtests" {
+            nativeBuildInputs = [ pkgs.neovim-debug ];
+            preferLocalBuild = true;
+          } ''
+            export TMPDIR=$out
+            mkdir $out
+            cd $out
+            # it tries to write a .gdbinit for some reason
+            make -C ${./..}/src/nvim/testdir NVIM_PRG="${pkgs.neovim-debug}/bin/nvim"
+          '';
+
+          # this is available only in build Makefile since it checks for 
+          # look into cmake/RunTests.cmake
+          # I think we can remove --lpath=build/?.lua
+          # we can have unit tests as well
+          functionaltests = pkgs.runCommandNoCC "functionaltests" {
+            nativeBuildInputs = [ pkgs.neovim-debug ];
+            preferLocalBuild = true;
+          } ''
+            BUSTED_OUTPUT_TYPE="nvim"
+            # cd ${./..}
+            echo "PWD: $PWD"
+            echo "vs \$out: $out"
+            echo "luaEnv: ${neovimLuaEnv}"
+            export LUA_PATH="${./..}/?.lua;$LUA_PATH"
+          ${neovimLuaEnv}/bin/busted -v -o test.busted.outputHandlers.$BUSTED_OUTPUT_TYPE
+            --lazy --helper=test/functional/preload.lua
+            --lpath=build/?.lua
+            --lpath=runtime/lua/?.lua
+            --lpath=?.lua
+            touch $out
+          '';
+    # ${BUSTED_ARGS}
+    # ${TEST_PATH}
+          #     COMMAND ${CMAKE_COMMAND}
+          #       -DBUSTED_PRG=${BUSTED_PRG}
+          #       -DLUA_PRG=${LUA_PRG}
+          #       -DNVIM_PRG=$<TARGET_FILE:nvim>
+          #       -DWORKING_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+          #       -DBUSTED_OUTPUT_TYPE=${BUSTED_OUTPUT_TYPE}
+          #       -DTEST_DIR=${CMAKE_CURRENT_SOURCE_DIR}/test
+          #       -DBUILD_DIR=${CMAKE_BINARY_DIR}
+          #       -DTEST_TYPE=functional
+          #       -P ${PROJECT_SOURCE_DIR}/cmake/RunTests.cmake
+          # '';
         };
 
         defaultPackage = pkgs.neovim;
