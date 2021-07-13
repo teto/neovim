@@ -113,17 +113,21 @@
           functionaltests = pkgs.runCommandNoCC "functionaltests" {
             nativeBuildInputs = [ pkgs.neovim-debug ];
             preferLocalBuild = true;
+                        # export LUA_PATH="${./..}/?.lua;$LUA_PATH"
+
           } ''
             BUSTED_OUTPUT_TYPE="nvim"
-            # cd ${./..}
+            cd ${./..}
             echo "PWD: $PWD"
             echo "vs \$out: $out"
             echo "luaEnv: ${neovimLuaEnv}"
+            set -x
             export LUA_PATH="${./..}/?.lua;$LUA_PATH"
-          ${neovimLuaEnv}/bin/busted -v -o test.busted.outputHandlers.$BUSTED_OUTPUT_TYPE
-            --lazy --helper=test/functional/preload.lua
-            --lpath=build/?.lua
-            --lpath=runtime/lua/?.lua
+            export NVIM_PRG=${pkgs.neovim}/bin/nvim
+          ${neovimLuaEnv}/bin/busted -v -o test.busted.outputHandlers.$BUSTED_OUTPUT_TYPE \
+            --lazy --helper=test/functional/preload.lua \
+            --lpath=build/?.lua \
+            --lpath=runtime/lua/?.lua \
             --lpath=?.lua
             touch $out
           '';
@@ -165,7 +169,7 @@
                 clang-tools # for clangd to find the correct headers
               ];
 
-              shellHook = ''
+              shellHook = oa.shellHook + ''
                 export NVIM_PYTHON_LOG_LEVEL=DEBUG
                 export NVIM_LOG_FILE=/tmp/nvim.log
 
