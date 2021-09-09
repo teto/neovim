@@ -13,16 +13,21 @@
           pkgs = nixpkgs.legacyPackages.${prev.system};
         in
         rec {
-          neovim = pkgs.neovim-unwrapped.overrideAttrs (oa: {
+          neovim-master = pkgs.neovim-unwrapped.overrideAttrs (oa: {
             version = "master";
             src = ../.;
+
+            nativeBuildInputs = oa.nativeBuildInputs ++ [
+              # for libtoolize
+              pkgs.libtool
+            ];
           });
 
           # a development binary to help debug issues
           neovim-debug = let
             stdenv = if pkgs.stdenv.isLinux then pkgs.llvmPackages_latest.stdenv else pkgs.stdenv;
           in
-            ((neovim.override {
+            ((neovim-master.override {
             lua = pkgs.luajit;
             inherit stdenv;
           }).overrideAttrs (oa: {
