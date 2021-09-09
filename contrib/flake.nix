@@ -46,6 +46,7 @@
             in
             (neovim-debug.override ({ doCheck = pkgs.stdenv.isLinux; })).overrideAttrs (oa: {
               cmakeFlags = oa.cmakeFlags ++ [
+                "-DUSE_BUNDLED_LIBUV=1"
                 "-DLUACHECK_PRG=${luacheck}/bin/luacheck"
                 "-DMIN_LOG_LEVEL=0"
                 "-DENABLE_LTO=OFF"
