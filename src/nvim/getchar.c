@@ -847,6 +847,10 @@ void init_default_mappings(void)
   add_map((char_u *)"<C-L> <Cmd>nohlsearch<Bar>diffupdate<CR><C-L>", NORMAL, true);
   add_map((char_u *)"<C-U> <C-G>u<C-U>", INSERT, true);
   add_map((char_u *)"<C-W> <C-G>u<C-W>", INSERT, true);
+
+  add_map((char_u *)"<help> <cmd>help", NORMAL |VISUAL| INSERT , true);
+  add_map((char_u *)"<f1> <cmd>help", NORMAL |VISUAL| INSERT , true);
+  add_map((char_u *)"<xf1> <cmd>help", NORMAL |VISUAL| INSERT , true);
 }
 
 // Insert a string in position 'offset' in the typeahead buffer (for "@r"
