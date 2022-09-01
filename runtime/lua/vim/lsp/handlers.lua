@@ -94,6 +94,11 @@ M['window/showMessageRequest'] = function(_, result)
 
   -- window/showMessageRequest can return either MessageActionItem[] or null.
   local choice = vim.fn.inputlist(option_strings)
+  local cb = function(item)
+    selected = item
+  end
+  vim.ui.select(items, opts, cb)
+
   if choice < 1 or choice > #actions then
     return vim.NIL
   else
