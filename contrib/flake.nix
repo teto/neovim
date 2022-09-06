@@ -57,7 +57,7 @@
               ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
                 # https://github.com/google/sanitizers/wiki/AddressSanitizerFlags
                 # https://clang.llvm.org/docs/AddressSanitizer.html#symbolizing-the-reports
-                "-DCLANG_ASAN_UBSAN=ON"
+                # "-DCLANG_ASAN_UBSAN=ON"
               ];
             });
         };

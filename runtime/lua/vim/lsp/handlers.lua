@@ -84,26 +84,27 @@ end
 --see: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#window_showMessageRequest
 M['window/showMessageRequest'] = function(_, result)
   local actions = result.actions
-  print(result.message)
+  -- print(result.message)
   local option_strings = { result.message, '\nRequest Actions:' }
   for i, action in ipairs(actions) do
     local title = action.title:gsub('\r\n', '\\r\\n')
-    title = title:gsub('\n', '\\n')
+    title = title:gsub('\n', '')
     table.insert(option_strings, string.format('%d. %s', i, title))
   end
 
   -- window/showMessageRequest can return either MessageActionItem[] or null.
-  local choice = vim.fn.inputlist(option_strings)
-  local cb = function(item)
-    selected = item
+  -- local choice = vim.fn.inputlist(option_strings)
+  -- local cb = function(item)
+  --   selected = item
+  -- end
+  local cb = function (choice)
+    if choice < 1 or choice > #actions then
+      return vim.NIL
+    else
+      return actions[choice]
+    end
   end
-  vim.ui.select(items, opts, cb)
-
-  if choice < 1 or choice > #actions then
-    return vim.NIL
-  else
-    return actions[choice]
-  end
+  vim.ui.select(option_strings, { prompt = result.message.."; Request Actions:" } , cb)
 end
 
 --see: https://microsoft.github.io/language-server-protocol/specifications/specification-current/#client_registerCapability
