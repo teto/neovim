@@ -84,6 +84,8 @@
 
         devShells = {
           default = pkgs.neovim-developer.overrideAttrs (oa: {
+            # to prevent changes in cmake.config/versiondef.h.in
+            preConfigure = "";
 
             buildInputs = with pkgs;
               oa.buildInputs ++ [

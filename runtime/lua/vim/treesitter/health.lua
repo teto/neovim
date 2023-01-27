@@ -11,13 +11,17 @@ end
 
 --- Performs a healthcheck for treesitter integration
 function M.check()
+    -- print("HELLO WORLD")
+    health.report_info("HELLO WORLD")
   local parsers = M.list_parsers()
 
   health.report_info(string.format('Nvim runtime ABI version: %d', ts.language_version))
 
-  for _, parser in pairs(parsers) do
+  for key, parser in pairs(parsers) do
     local parsername = vim.fn.fnamemodify(parser, ':t:r')
     local is_loadable, ret = pcall(ts.language.require_language, parsername)
+    print("HELLO WORLD")
+    health.report_info("Key", key)
 
     if not is_loadable or not ret then
       health.report_error(
