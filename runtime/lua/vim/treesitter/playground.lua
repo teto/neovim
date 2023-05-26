@@ -94,7 +94,7 @@ end
 function TSPlayground:new(bufnr, lang)
   local ok, parser = pcall(vim.treesitter.get_parser, bufnr or 0, lang)
   if not ok then
-    return nil, 'No parser available for the given buffer'
+    return nil, 'No parser available for the given buffer of lang '..lang
   end
 
   -- For each child tree (injected language), find the root of the tree and locate the node within
