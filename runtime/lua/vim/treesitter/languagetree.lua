@@ -111,23 +111,35 @@ function LanguageTree.new(source, lang, opts)
   opts = opts or {}
 
   local injections = opts.injections or {}
+  -- print("Setting metatable")
+  cparser = vim._create_ts_parser(lang)
+  -- print("cparser ", cparser)
+
+  print("before qinject ")
+  local qinject = query.get(lang, 'injections')
+  print("qinject ", qinject)
+  local inject_query = {}
+    -- injections[lang] and query.parse(lang, injections[lang]) or query.get(lang, 'injections')
+  print("query ", inject_query)
   local self = setmetatable({
     _source = source,
     _lang = lang,
     _children = {},
     _trees = {},
     _opts = opts,
-    _injection_query = injections[lang] and query.parse(lang, injections[lang])
-      or query.get(lang, 'injections'),
+    _injection_query = inject_query,
     _valid = false,
-    _parser = vim._create_ts_parser(lang),
+    _parser = cparser,
     _callbacks = {},
     _callbacks_rec = {},
   }, LanguageTree)
 
+  print("__ts_debug value ", vim.g.__ts_debug)
+
   if vim.g.__ts_debug and type(vim.g.__ts_debug) == 'number' then
     self:_set_logger()
   end
+  self._logger("warn", "ehllo")
 
   for _, name in pairs(TSCallbackNames) do
     self._callbacks[name] = {}
@@ -141,9 +153,10 @@ function LanguageTree:_set_logger()
   local source = self:source()
   source = type(source) == 'string' and 'text' or tostring(source)
 
-  local lang = self:lang()
 
   local logfilename = vim.fs.joinpath(vim.fn.stdpath('log'), 'treesitter.log')
+  -- print("log filename ", logfilename)
+  local lang = self:lang()
 
   local logfile, openerr = io.open(logfilename, 'a+')
 
@@ -162,6 +175,7 @@ function LanguageTree:_set_logger()
   local log_lex = vim.g.__ts_debug >= 3
   local log_parse = vim.g.__ts_debug >= 2
   self._parser:_set_logger(log_lex, log_parse, self._logger)
+  self._logger("warn", "Enabled")
 end
 
 ---@private
@@ -285,6 +299,7 @@ end
 ---@return TSTree[]
 function LanguageTree:parse()
   if self:is_valid() then
+    print("valid, returning trees")
     self:_log('valid')
     return self._trees
   end

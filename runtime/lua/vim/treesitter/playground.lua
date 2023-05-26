@@ -94,7 +94,7 @@ end
 function TSPlayground:new(bufnr, lang)
   local ok, parser = pcall(vim.treesitter.get_parser, bufnr or 0, lang)
   if not ok then
-    return nil, 'No parser available for the given buffer of lang '..lang
+    return nil, 'No parser available for the given buffer'
   end
 
   -- For each child tree (injected language), find the root of the tree and locate the node within
@@ -238,7 +238,10 @@ function M.inspect_tree(opts)
 
   local buf = api.nvim_get_current_buf()
   local win = api.nvim_get_current_win()
-  local pg = assert(TSPlayground:new(buf, opts.lang))
+  -- print("LANG" , opts.lang)
+  -- print("FILETYPE", vim.bo[buf].filetype)
+  -- or vim.bo[buf].filetype
+  local pg = assert(TSPlayground:new(buf, opts.lang ))
 
   -- Close any existing playground window
   if vim.b[buf].playground then

@@ -160,6 +160,7 @@ local function read_query_files(filenames)
   local contents = {}
 
   for _, filename in ipairs(filenames) do
+    print("Loading query from file ", filename)
     table.insert(contents, safe_read(filename, '*a'))
   end
 
@@ -208,14 +209,19 @@ end
 ---
 ---@return Query|nil Parsed query
 function M.get(lang, query_name)
+  print("get query parse")
   if explicit_queries[lang][query_name] then
+    print("explicit queries")
     return explicit_queries[lang][query_name]
   end
 
   local query_files = M.get_files(lang, query_name)
+  print("read query parse")
   local query_string = read_query_files(query_files)
+  print(query_string)
 
   if #query_string > 0 then
+    print("parsing queries...")
     return M.parse(lang, query_string)
   end
 end
@@ -256,7 +262,10 @@ function M.parse(lang, query)
   end
 
   local self = setmetatable({}, Query)
+  print("toto")
   self.query = vim._ts_parse_query(lang, query)
+  print("toto2")
+  print(self.query)
   self.info = self.query:inspect()
   self.captures = self.info.captures
   query_cache[lang][query] = self

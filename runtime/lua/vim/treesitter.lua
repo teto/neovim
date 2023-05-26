@@ -40,7 +40,7 @@ local M = setmetatable({}, {
 })
 
 M.language_version = vim._ts_get_language_version()
-M.minimum_language_version = vim._ts_get_minimum_language_version()
+M.minimum_language_version = 5
 
 --- Creates a new parser
 ---
@@ -55,10 +55,12 @@ function M._create_parser(bufnr, lang, opts)
   if bufnr == 0 then
     bufnr = vim.api.nvim_get_current_buf()
   end
+  print("_create_parser start")
 
   vim.fn.bufload(bufnr)
 
   local self = LanguageTree.new(bufnr, lang, opts)
+  print("self created")
 
   ---@private
   local function bytes_cb(_, ...)
@@ -78,15 +80,20 @@ function M._create_parser(bufnr, lang, opts)
     self:_on_reload()
   end
 
+  print("source")
   local source = self:source() --[[@as integer]]
+  print("source result", source)
 
+  print("attach")
   api.nvim_buf_attach(
     source,
     false,
     { on_bytes = bytes_cb, on_detach = detach_cb, on_reload = reload_cb, preview = true }
   )
 
-  self:parse()
+  print("attempting to parse")
+  local tree = self:parse()
+  print("tree ", tree)
 
   return self
 end
@@ -113,10 +120,11 @@ function M.get_parser(bufnr, lang, opts)
   end
 
   if not valid_lang(lang) then
-    lang = M.language.get_lang(vim.bo[bufnr].filetype) or vim.bo[bufnr].filetype
+    lang2 = M.language.get_lang(vim.bo[bufnr].filetype) or vim.bo[bufnr].filetype
   end
 
-  if not valid_lang(lang) then
+  print("Looking at ", lang2)
+  if not valid_lang(lang2) then
     if not parsers[bufnr] then
       error(
         string.format(
@@ -128,12 +136,17 @@ function M.get_parser(bufnr, lang, opts)
       )
     end
   elseif parsers[bufnr] == nil or parsers[bufnr]:lang() ~= lang then
-    parsers[bufnr] = M._create_parser(bufnr, lang, opts)
+
+    print("attempting to create parser")
+    local res = M._create_parser(bufnr, lang2, opts)
+    print("created parser", res)
+    parsers[bufnr] = res
   end
 
   parsers[bufnr]:register_cbs(opts.buf_attach_cbs)
 
-  return parsers[bufnr]
+  local res = parsers[bufnr]
+  return res
 end
 
 --- Returns a string parser
