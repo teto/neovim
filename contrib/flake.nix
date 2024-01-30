@@ -2,7 +2,8 @@
   description = "Neovim flake";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    # nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:polarmutex/nixpkgs/update-treesitter";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
