@@ -41,11 +41,14 @@ int findsent(Direction dir, int count)
   bool noskip = false;              // do not skip blanks
 
   pos_T pos = curwin->w_cursor;
+
+  ILOG("Find sentence");
   if (dir == FORWARD) {
     func = incl;
   } else {
     func = decl;
   }
+
 
   while (count--) {
     const pos_T prev_pos = pos;
@@ -108,8 +111,10 @@ int findsent(Direction dir, int count)
         }
         break;
       }
-      // 。
-      if (c == '.' || c == '!' || c == '?' || c == 14909570) {
+      
+      if (c == '.' || c == '!' || c == '?' 
+          // 。/ ！ / ？
+          || c == 0x3002 || c == 0xff01 || c == 0xff1f) {
         pos_T tpos = pos;
         do {
           if ((c = inc(&tpos)) == -1) {
@@ -154,6 +159,7 @@ found:
       count++;
     }
   }
+  ILOG("found end of sentence");
 
   setpcmark();
   curwin->w_cursor = pos;

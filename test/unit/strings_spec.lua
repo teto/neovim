@@ -137,7 +137,7 @@ describe('vim_strchr()', function()
     eq(7, vim_strchr('„«»“', 0x201C))
     eq(nil, vim_strchr('„«»“', 0x201D))
     eq(0, vim_strchr('„«»“', 0x201E))
-    eq(0, vim_strchr("。.!?)]\"'", ))
+    eq(1, vim_strchr(".。!?)]\"'", 0x3002))
 
     eq(0, vim_strchr('\244\143\188\128', 0x10FF00))
     eq(2, vim_strchr('«\244\143\188\128»', 0x10FF00))
