@@ -71,3 +71,14 @@ typedef struct {
   int ml_numchunks;
   int ml_usedchunks;
 } memline_T;
+
+/// @return   1 when going to the next line.
+///           2 when moving forward onto a NUL at the end of the line).
+///          -1 when at the end of file.
+///           0 otherwise.
+typedef enum {
+  kSearchNextLine = 1,
+  kSearchEOLNul = 2,
+  kSearchEndOfFile = -1,
+  kSearchOtherwise = 0
+} kSearchResult;
