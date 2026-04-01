@@ -4408,6 +4408,7 @@ static void nv_percent(cmdarg_T *cap)
 /// cap->arg is BACKWARD for "(" and FORWARD for ")".
 static void nv_brace(cmdarg_T *cap)
 {
+  DLOG("nv_brace start");
   cap->oap->motion_type = kMTCharWise;
   cap->oap->use_reg_one = true;
   // The motion used to be inclusive for "(", but that is not what Vi does.
@@ -4415,6 +4416,7 @@ static void nv_brace(cmdarg_T *cap)
   curwin->w_set_curswant = true;
 
   if (findsent(cap->arg, cap->count1) == FAIL) {
+    ILOG("nv_brace failed to find");
     clearopbeep(cap->oap);
     return;
   }
@@ -4423,8 +4425,10 @@ static void nv_brace(cmdarg_T *cap)
   adjust_cursor(cap->oap);
   curwin->w_cursor.coladd = 0;
   if ((fdo_flags & kOptFdoFlagBlock) && KeyTyped && cap->oap->op_type == OP_NOP) {
+    DLOG("nv_brace open fold");
     foldOpenCursor();
   }
+  DLOG("nv_brace end");
 }
 
 /// "m" command: Mark a position.
@@ -6018,6 +6022,7 @@ static void adjust_cursor(oparg_T *oap)
       && (!VIsual_active || *p_sel == 'o')
       && !virtual_active(curwin)
       && (get_ve_flags(curwin) & kOptVeFlagOnemore) == 0) {
+    DLOG("moving back cursor");
     curwin->w_cursor.col--;
     // prevent cursor from moving on the trail byte
     mb_adjust_cursor();

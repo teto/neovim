@@ -67,6 +67,7 @@ int findsent(Direction dir, int count)
       // go to the next line
     } else if (dir == FORWARD && pos.col == 0
                && startPS(pos.lnum, NUL, false)) {
+      DLOG("At the start of a paragraph");
       if (pos.lnum == curbuf->b_ml.ml_line_count) {
         return FAIL;
       }
@@ -90,7 +91,7 @@ int findsent(Direction dir, int count)
       if (vim_strchr("。.!?", c) != NULL) {
         found_dot = true;
         ILOG("Found dot");
-        ILOG("%s", c);
+        ILOG("%d", c);
       }
       if (vim_strchr(")]\"'", c) != NULL
           && vim_strchr("。.!?)]\"'", gchar_pos(&tpos)) == NULL) {
@@ -101,12 +102,18 @@ int findsent(Direction dir, int count)
 
     // remember the line where the search started
     const int startlnum = pos.lnum;
+    // need two spaces to detect end of sentence
     const bool cpo_J = vim_strchr(p_cpo, CPO_ENDOFSENT) != NULL;
 
+    ILOG("Starting search from line %d", startlnum);
     while (true) {              // find end of sentence
+      // codepoint
       c = gchar_pos(&pos);
+      DLOG("checking codepoint %x", c);
+
       if (c == NUL || (pos.col == 0 && startPS(pos.lnum, NUL, false))) {
         if (dir == BACKWARD && pos.lnum != startlnum) {
+          DLOG("put it on character");
           pos.lnum++;
         }
         break;
@@ -118,6 +125,7 @@ int findsent(Direction dir, int count)
         pos_T tpos = pos;
         do {
           if ((c = inc(&tpos)) == -1) {
+            // end of file
             break;
           }
         } while (vim_strchr(")]\"'", c = gchar_pos(&tpos))
