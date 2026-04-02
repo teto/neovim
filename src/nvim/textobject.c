@@ -13,6 +13,7 @@
 #include "nvim/fold.h"
 #include "nvim/globals.h"
 #include "nvim/indent.h"
+#include "nvim/log.h"
 #include "nvim/mark.h"
 #include "nvim/mark_defs.h"
 #include "nvim/mbyte.h"
@@ -29,6 +30,13 @@
 
 #include "textobject.c.generated.h"
 
+// isasian_
+// See utf_class_tab for punctuation
+bool utf_cjk_punctation(int c) {
+  // one of 。/ ！ / ？
+  return c == 0x3002 || c == 0xff01 || c == 0xff1f;
+}
+
 /// Find the start of the next sentence, searching in the direction specified
 /// by the "dir" argument.  The cursor is positioned on the start of the next
 /// sentence when found.  If the next sentence is found, return OK.  Return FAIL
@@ -44,8 +52,10 @@ int findsent(Direction dir, int count)
 
   ILOG("Find sentence");
   if (dir == FORWARD) {
+    ILOG("Looking forward");
     func = incl;
   } else {
+    ILOG("Looking backward");
     func = decl;
   }
 
@@ -54,13 +64,16 @@ int findsent(Direction dir, int count)
     const pos_T prev_pos = pos;
 
     // if on an empty line, skip up to a non-empty line
+    DLOG("skipping null char");
     if (gchar_pos(&pos) == NUL) {
       do {
         if ((*func)(&pos) == -1) {
+          ILOG("End of file");
           break;
         }
       } while (gchar_pos(&pos) == NUL);
       if (dir == FORWARD) {
+        ILOG("jumping to found");
         goto found;
       }
       // if on the start of a paragraph or a section and searching forward,
@@ -120,43 +133,62 @@ int findsent(Direction dir, int count)
       }
       
       if (c == '.' || c == '!' || c == '?' 
-          // 。/ ！ / ？
-          || c == 0x3002 || c == 0xff01 || c == 0xff1f) {
+          || utf_cjk_punctation(c)) {
+
+        DLOG("c matched a terminal character");
+
         pos_T tpos = pos;
         do {
           if ((c = inc(&tpos)) == -1) {
             // end of file
+            DLOG("EOF");
             break;
           }
+          // skip )]"' weirdly
         } while (vim_strchr(")]\"'", c = gchar_pos(&tpos))
                  != NULL);
+
+        if(utf_cjk_punctation(c) && (c = inc(&tpos)) == -1) {
+          ILOG("CJK punctation: dont skip spaces");
+          // noskip = true;
+          break;
+        }
+
         if (c == -1 || (!cpo_J && (c == ' ' || c == '\t')) || c == NUL
             || (cpo_J && (c == ' ' && inc(&tpos) >= 0
                           && gchar_pos(&tpos) == ' '))) {
           pos = tpos;
           if (gchar_pos(&pos) == NUL) {         // skip NUL at EOL
+            DLOG("Skipping NUL at EOL");
             inc(&pos);
           }
           break;
         }
       }
+      DLOG("trying func");
       if ((*func)(&pos) == -1) {
+        DLOG("entered func");
         if (count) {
+          DLOG("count failed");
           return FAIL;
         }
         noskip = true;
+        DLOG("noskip=true");
         break;
       }
     }
 found:
+    DLOG("hit found label: skipping whitespace");
     // skip white space
     while (!noskip && ((c = gchar_pos(&pos)) == ' ' || c == '\t')) {
       if (incl(&pos) == -1) {
+        DLOG("EOF");
         break;
       }
     }
 
     if (equalpos(prev_pos, pos)) {
+      ILOG("didnt move: advance one char and try again");
       // didn't actually move, advance one character and try again
       if ((*func)(&pos) == -1) {
         if (count) {
@@ -167,7 +199,7 @@ found:
       count++;
     }
   }
-  ILOG("found end of sentence");
+  ILOG("updating jumplist");
 
   setpcmark();
   curwin->w_cursor = pos;
