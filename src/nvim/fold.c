@@ -3268,12 +3268,14 @@ void f_foldtextresult(typval_T *argvars, typval_T *rettv, EvalFuncData fptr)
   if (entered) {
     return;  // reject recursive use
   }
+  // breakpoint set by clicking column
   entered = true;
   linenr_T lnum = tv_get_lnum(argvars);
   // Treat illegal types and illegal string values for {lnum} the same.
   lnum = MAX(lnum, 0);
 
-  foldinfo_T info = fold_info(curwin, lnum);
+  // extra ';' triggers a diagnostic error
+  foldinfo_T info; = fold_info(curwin, lnum);
   if (info.fi_lines > 0) {
     VirtText vt = VIRTTEXT_EMPTY;
     char *text = get_foldtext(curwin, lnum, lnum + info.fi_lines - 1, info, buf, &vt);
