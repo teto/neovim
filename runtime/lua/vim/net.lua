@@ -133,6 +133,8 @@ function M.request(url, opts, on_response)
   end)
 
   return {
+      -- hack
+    job = job,
     close = function()
       job:kill('sigint')
     end,
