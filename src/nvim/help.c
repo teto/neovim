@@ -556,7 +556,9 @@ static void helptags_one(char *dir, const char *ext, const char *tagfname, bool 
     const char *const fname = files[fi] + dirlen + 1;
 
     bool in_example = false;
+    linenr_T lnum = 0;
     while (!vim_fgets(IObuff, IOSIZE, fd) && !got_int) {
+      lnum++;
       if (in_example) {
         // skip over example; a non-white in the first column ends it
         if (vim_strchr(" \t\n\r", (uint8_t)IObuff[0])) {
@@ -583,10 +585,10 @@ static void helptags_one(char *dir, const char *ext, const char *tagfname, bool 
                   || s[1] == NUL)) {
             *p2 = NUL;
             p1++;
-            size_t s_len = (size_t)(p2 - p1) + strlen(fname) + 2;
+            size_t s_len = (size_t)(p2 - p1) + strlen(fname) + NUMBUFLEN + 3;
             s = xmalloc(s_len);
             GA_APPEND(char *, &ga, s);
-            snprintf(s, s_len, "%s\t%s", p1, fname);
+            snprintf(s, s_len, "%s\t%s\t%" PRIdLINENR, p1, fname, lnum);
 
             // find next '*'
             p2 = vim_strchr(p2 + 1, '*');
@@ -622,12 +624,20 @@ static void helptags_one(char *dir, const char *ext, const char *tagfname, bool 
       char *p2 = ((char **)ga.ga_data)[i];
       while (*p1 == *p2) {
         if (*p2 == '\t') {
+          *p1 = NUL;
           *p2 = NUL;
+          char *lnum1 = strchr(p1 + 1, '\t');
+          char *lnum2 = strchr(p2 + 1, '\t');
+          *lnum1 = NUL;
+          *lnum2 = NUL;
           vim_snprintf(NameBuff, MAXPATHL,
-                       _("E154: Duplicate tag \"%s\" in file %s/%s"),
-                       ((char **)ga.ga_data)[i], dir, p2 + 1);
-          emsg(NameBuff);
+                       _("E154: Duplicate tag \"%s\" in files %s/%s:%s and %s/%s:%s"),
+                       ((char **)ga.ga_data)[i], dir, p1 + 1, lnum1 + 1, dir, p2 + 1, lnum2 + 1);
+          *lnum1 = '\t';
+          *lnum2 = '\t';
+          *p1 = '\t';
           *p2 = '\t';
+          emsg(NameBuff);
           break;
         }
         p1++;
@@ -642,6 +652,8 @@ static void helptags_one(char *dir, const char *ext, const char *tagfname, bool 
         // help-tags entry was added in formatted form
         fputs(s, fd_tags);
       } else {
+        char *lnum = strrchr(s, '\t');
+        *lnum = NUL;
         fprintf(fd_tags, "%s\t/" "*", s);
         for (char *p1 = s; *p1 != '\t'; p1++) {
           // insert backslash before '\\' and '/'
@@ -651,6 +663,7 @@ static void helptags_one(char *dir, const char *ext, const char *tagfname, bool 
           putc(*p1, fd_tags);
         }
         fprintf(fd_tags, "*\n");
+        *lnum = '\t';
       }
     }
   }

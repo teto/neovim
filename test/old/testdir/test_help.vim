@@ -177,9 +177,11 @@ func Test_helptag_cmd()
                    \ "tag4\ta/doc/sample.txt\t/*tag4*"],
     \ readfile('Xtagdir/tags'))
 
-  " Duplicate tags in the help file
-  call writefile(['*tag1*', '*tag1*', '*tag2*'], 'Xtagdir/a/doc/sample.txt')
-  call assert_fails('helptags Xtagdir', 'E154:')
+  " Duplicate tags in help files
+  call writefile(['*tag1*', '*tag2*'], 'Xtagdir/a/doc/sample.txt')
+  call writefile(['*tag1*'], 'Xtagdir/a/doc/other.txt')
+  call assert_fails('helptags Xtagdir',
+        \ 'E154: Duplicate tag "tag1" in files Xtagdir/a/doc/other.txt:1 and Xtagdir/a/doc/sample.txt:1')
 
   call delete('Xtagdir', 'rf')
 endfunc
